@@ -1,22 +1,25 @@
 package types
-import "project/internal/datamanagment"
+
 import (
+	"project/internal/datamanagment"
+	"strconv"
+
 	byteslib "bytes"
 	"encoding/binary"
 )
 type Integer struct{
-	super_service *datamanagment.IOService
-	index int32
+	Super_service *datamanagment.IOService
+	Index int32
 	Size int32
 }
 func (self Integer)Set(obj int32) {
 	bytes := make([]byte, 4)
 	binary.LittleEndian.PutUint32(bytes, uint32(obj))
-	self.super_service.Write(bytes,self.index)
+	self.Super_service.Write(bytes,self.Index)
 }
 func (self Integer)Get() int32{
 	var value int32
-	chunk := self.super_service.Read(4,self.index)
+	chunk := self.Super_service.Read(4,self.Index)
 	buffer := byteslib.NewReader(*chunk)
 	err := binary.Read(buffer, binary.LittleEndian, &value)
 	if err != nil {
@@ -24,32 +27,56 @@ func (self Integer)Get() int32{
 	}
 	return value
 }
+func(self Integer)Dot_label()string{
+	return strconv.Itoa(int(self.Get()))
+}
+
+
+
+
+
 type Boolean struct{
-	super_service *datamanagment.IOService
-	index int32
+	Super_service *datamanagment.IOService
+	Index int32
 	Size int32
 }
 func (self Boolean)Set(a bool) {
 	if a {
-		self.super_service.Write([]byte{1},self.index)
+		self.Super_service.Write([]byte{1},self.Index)
 	} else{
-		self.super_service.Write([]byte{0},self.index)
+		self.Super_service.Write([]byte{0},self.Index)
 	}
 }
 func (self Boolean)Get() bool{
-	chunk := self.super_service.Read(1,self.index)
+	chunk := self.Super_service.Read(1,self.Index)
 	return (*chunk)[0] != 0
 }
+func (self Boolean)Dot_label() string{
+	if self.Get() {
+		return "true"
+	}
+	return "false"
+}
+
+
+
+
+
+
+
 
 type Character struct{
-	super_service *datamanagment.IOService
-	index int32
+	Super_service *datamanagment.IOService
+	Index int32
 	Size int32
 }
 func (self Character)Set(a string) {
-	self.super_service.Write([]byte{a[0]},self.index)
+	self.Super_service.Write([]byte{a[0]},self.Index)
 }
 func (self Character)Get() string{
-	chunk := self.super_service.Read(1,self.index)
+	chunk := self.Super_service.Read(1,self.Index)
 	return string(*chunk)
+}
+func (self Character)Dot_label() string{
+	return self.Get()
 }

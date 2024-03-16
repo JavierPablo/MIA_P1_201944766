@@ -7,20 +7,20 @@ import (
 )
 type Bitmap struct{
 	super_service *datamanagment.IOService
-	index int32
 	length int32
+	index int32
+	space_manager datamanagment.SpaceManager
 	free_transformer types.Integer
 	free int32
-	chunks []Chunk
 }
 func New_Bitmap(super_service *datamanagment.IOService,index int32,length int32,free types.Integer) Bitmap{
 	return Bitmap{
-		super_service: super_service,
-		index:         index,
-		length:        length,
-		free:          free.Get(),
-		free_transformer:          free,
-		chunks:        []Chunk{},
+		super_service:    super_service,
+		length:           length,
+		index:            index,
+		space_manager:    datamanagment.Empty_SpaceManager_from(length),
+		free_transformer: free,
+		free:             free.Get(),
 	}
 }
 
@@ -32,109 +32,59 @@ func (self *Bitmap) Clear(){
 		bytes_to_write[i] = 0
 	}
 	self.super_service.Write(bytes_to_write,self.index)
+	self.space_manager = datamanagment.Empty_SpaceManager_from(self.length)
 }
 func (self *Bitmap) Init_mapping(){
 	bitmap := self.super_service.Read(self.length,self.index)
-	chunks := make([]Chunk,0,10)
-	current_chunk := Chunk{bit_no: 0,length: 0}
+	chunks := make([]datamanagment.Space,0,10)
+	current_chunk := datamanagment.New_Space(0,0)
 	for n,b := range *bitmap{
 		if b == 0{
-			current_chunk.length ++
+			current_chunk.Length ++
 		}else{
-			if current_chunk.length == 0{
-				current_chunk.bit_no = int32(n) + 1
+			if current_chunk.Length == 0{
+				current_chunk.Index = int32(n) + 1
 				continue
 			}
 			chunks = append(chunks, current_chunk)
-			current_chunk = Chunk{bit_no: int32(n) + 1,length: 0}
+			current_chunk = datamanagment.New_Space(int32(n)+1,0)
+			//  Chunk{bit_no: int32(n) + 1,length: 0}
 		}
 	}
-	if current_chunk.length != 0{
+	if current_chunk.Length != 0{
 		chunks = append(chunks, current_chunk)
 	}
-	self.chunks = chunks
+	self.space_manager = datamanagment.SpaceManager_from_free_spaces(chunks,self.length)
 }
 
-type Chunk struct{
-	bit_no int32
-	length int32
-}
 func (self *Bitmap) Best_fit(for_length int32) int32{
-	candidate := 0
-	candidate_exist := false
-	for i := 0; i < len(self.chunks); i++ {
-		if for_length <= self.chunks[i].length &&
-		 self.chunks[candidate].length >= self.chunks[i].length{
-			candidate = i
-			candidate_exist = true
-		}
-	}
-	if candidate_exist{
-		return self.ocupe_chunk(candidate,for_length)
-	}
-	return -1
-}
-func (self *Bitmap) Worst_fit(for_length int32) int32{
-	candidate := 0
-	candidate_exist := false
-	for i := 0; i < len(self.chunks); i++ {
-		if for_length <= self.chunks[i].length &&
-		 self.chunks[candidate].length <= self.chunks[i].length{
-			candidate = i
-			candidate_exist = true
-		}
-	}
-	if candidate_exist{
-		return self.ocupe_chunk(candidate,for_length)
-	}
-	return -1
-}
-func (self *Bitmap) First_fit(for_length int32) int32{
-	for i := 0; i < len(self.chunks); i++ {
-		if for_length <= self.chunks[i].length {
-			return self.ocupe_chunk(i,for_length)
-		}
-	}
-	return -1
-}
-func (self *Bitmap) ocupe_chunk(index int,for_length int32)int32{
-	self.set_in_bitmap(for_length,self.chunks[index].bit_no,1)
-	bit_no := self.chunks[index].bit_no
-	self.chunks[index].bit_no+=for_length
-	self.chunks[index].length-=for_length
-	if self.chunks[index].length == 0{
-		self.chunks = append((self.chunks)[:index], (self.chunks)[index+1:]...)
-	}
+	space_indx := self.space_manager.Best_fit(for_length)
+	if space_indx == -1{return -1}
+	bit_no := self.space_manager.Chunk_no(space_indx).Index
+	self.space_manager.Ocupe_space_unchecked(int(space_indx),for_length)
+	self.set_in_bitmap(for_length,bit_no,1)
 	return bit_no
 }
-
+func (self *Bitmap) Worst_fit(for_length int32) int32{
+	space_indx := self.space_manager.Worst_fit(for_length)
+	if space_indx == -1{return -1}
+	bit_no := self.space_manager.Chunk_no(space_indx).Index
+	self.space_manager.Ocupe_space_unchecked(int(space_indx),for_length)
+	self.set_in_bitmap(for_length,bit_no,1)
+	return bit_no
+}
+func (self *Bitmap) First_fit(for_length int32) int32{
+	space_indx := self.space_manager.First_fit(for_length)
+	if space_indx == -1{return -1}
+	bit_no := self.space_manager.Chunk_no(space_indx).Index
+	self.space_manager.Ocupe_space_unchecked(int(space_indx),for_length)
+	self.set_in_bitmap(for_length,bit_no,1)
+	return bit_no
+}
 func (self *Bitmap) Erase(for_length int32, at_bit_no int32){
-	for i := 0; i < len(self.chunks); i++ {
-		if self.chunks[i].bit_no + self.chunks[i].length == at_bit_no {
-			self.chunks[i].length += for_length			
-			self.set_in_bitmap(for_length,at_bit_no,0)
-			return
-			}else if at_bit_no + for_length == self.chunks[i].bit_no{
-				self.chunks[i].length += for_length			
-				self.chunks[i].bit_no = at_bit_no 
-				self.set_in_bitmap(for_length,at_bit_no,0)
-				return
-			}
+	if self.space_manager.Free_space(for_length,at_bit_no){
+		self.set_in_bitmap(for_length,at_bit_no,0)
 	}
-
-	closest_chunk_index := 0
-	for i,chunk := range self.chunks{
-		if at_bit_no < chunk.bit_no{
-			closest_chunk_index = i
-			break
-		}
-	}
-	self.chunks = append(self.chunks[:closest_chunk_index+1], self.chunks[closest_chunk_index:]...)
-	self.chunks[closest_chunk_index] = Chunk{
-		bit_no: at_bit_no,
-		length: for_length,
-	}
-	self.set_in_bitmap(for_length,at_bit_no,0)
 }
 
 func (self *Bitmap) set_in_bitmap(amount int32, at_bit_no int32, data byte){
@@ -159,14 +109,7 @@ func (self *Bitmap) set_in_bitmap(amount int32, at_bit_no int32, data byte){
 
 
 func (self *Bitmap) Log_chunks_state(){
-	for _,b :=range self.chunks{
-		fmt.Print("{")
-		fmt.Print(b.bit_no)
-		fmt.Print(",")
-		fmt.Print(b.length)
-		fmt.Print("},")
-	}
-	fmt.Println()
+	self.space_manager.Log_chunks_state()
 }
 func (self Bitmap) Log_bitmap_state(){
 	bytes := self.super_service.Read(self.length,self.index)

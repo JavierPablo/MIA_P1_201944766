@@ -1,78 +1,121 @@
 package main
 
 import (
+	// "project/internal/parser"
 	"fmt"
+	"project/internal/aplication"
 	"project/internal/datamanagment"
 	"project/internal/formats/ext2"
 	"project/internal/types"
 	"project/internal/utiles"
+	"strings"
 )
 
 func main() {
-	// fmt.Println(int32(15)/64)
-	// simulate_reading()
-	// simulate_writing()
-	// bitmap_firstfit()
-	// bitmap_worstfit()
-	// bitmap_bestfit()
-	// recover_and_read_format_EXT2()
-
+	// a.Make_disk(3,utiles.Mb,utiles.First)
+	
 	// format_and_write_file_EXT2()
-	// first := [12]string{"1","1","1","1","1","1","1","1","1","1","1","",}
-	// second := [12]string{"1","1","1","1","1","1","1","1","1","1","1","",}
-	// fmt.Println(first == second)
 	// format_and_test_dir_and_file_EXT2()
 	// recover_and_test_dir_and_file_EXT2()
 	// recover_and_erase_file_EXT2()
-	bestfit()
-	// a:=utiles.New_Space(5,5)
-	// b:=utiles.New_Space(0,5)
-	// fmt.Printf("%s %s with %s\n",a.Show(),a.Contains(b),b.Show())
-	// b=utiles.New_Space(10,5)
-	// fmt.Printf("%s %s with %s\n",a.Show(),a.Contains(b),b.Show())
-	// b=utiles.New_Space(5,5)
-	// fmt.Printf("%s %s with %s\n",a.Show(),a.Contains(b),b.Show())
-	// b=utiles.New_Space(5,4)
-	// fmt.Printf("%s %s with %s\n",a.Show(),a.Contains(b),b.Show())
-	// b=utiles.New_Space(9,1)
-	// fmt.Printf("%s %s with %s\n",a.Show(),a.Contains(b),b.Show())
-	// b=utiles.New_Space(6,1)
-	// fmt.Printf("%s %s with %s\n",a.Show(),a.Contains(b),b.Show())
-	// b=utiles.New_Space(6,10)
-	// fmt.Printf("%s %s with %s\n",a.Show(),a.Contains(b),b.Show())
-	// b=utiles.New_Space(4,10)
-	// fmt.Printf("%s %s with %s\n",a.Show(),a.Contains(b),b.Show())
-	// b=utiles.New_Space(4,5)
-	// fmt.Printf("%s %s with %s\n",a.Show(),a.Contains(b),b.Show())
 	
-	// c:=utiles.New_Space(10,9)
-	// sd:=utiles.New_Space(13,3)
-	// fmt.Printf("%s %s with %s\n",c.Show(),c.Contains(sd),sd.Show())
+	// a:=aplication.Aplication{}
+	// a.Make_disk(10,utiles.Kb,utiles.First)
+	// partition_creation_and_mod_test()
+	// partition_recovery_test()
 	
-	// fmt.Printf("split %s with %s\n",c.Show(),sd.Show())
-	// a1,a2:=c.Split(sd)
-	// fmt.Printf("Result in two peaces %s AND %s\n",a1.Show(),a2.Show())
+	
+	// parser.Some_test()
 
+	// a.Make_disk(1,utiles.Kb,utiles.First)
+	io := datamanagment.IOService_from(aplication.DISK_CONTAINER_PATH+"/B.dsk")
+	mbr := types.CreateMasterBootRecord(&io,0)
+	fmt.Println(mbr.Dot_label())
+}
 
+func parser_testing(){
 
 }
-func check(){
 
+
+
+func partition_recovery_test(){
+	a:=aplication.Aplication{}
+	// a.Make_disk(1,utiles.Kb,utiles.First)
+	io := datamanagment.IOService_from(aplication.DISK_CONTAINER_PATH+"/B.dsk")
+	mbr := types.CreateMasterBootRecord(&io,0)
+
+	fmt.Println("Try reading 3 logic space ")
+	result,ext_part:=a.Get_extended_partition(mbr)
+	if !result{panic("There was no extended partition")}
+	result,ebr := a.Find_logical_partition_by_name(ext_part,utiles.Into_ArrayChar16("3 logic"))
+	if !result{panic("There was no logical partition found")}
+	fmt.Println(ebr.Get())
+
+	fmt.Println("Try reading extended space ")
+	fmt.Println(ext_part.Get())
+	sm:=a.Get_disk_partitions_space_manager(mbr)
+	sm.Log_chunks_state()
+	sm=a.Get_extended_part_space_manager(ext_part)
+	sm.Log_chunks_state()
 }
-func recover_and_read_format_EXT2(){
-	io := datamanagment.IOService_from("./disco.txt")
-	f:=ext2.Recover_FormatEXT2(&io,0,utiles.First)
-	f.Log_block_bitmap()
-	f.Log_inode_bitmap()
-	inode := types.CreateIndexNode(&io,160)
-	fmt.Println("Reading file just created")
-	for _,ch := range f.Read_file(&inode){
-		fmt.Print(ch)
+func partition_creation_and_mod_test(){
+	a:=aplication.Aplication{}
+	// a.Make_disk(1,utiles.Kb,utiles.First)
+	io := datamanagment.IOService_from(aplication.DISK_CONTAINER_PATH+"/B.dsk")
+	mbr := types.CreateMasterBootRecord(&io,0)
+	abs_index := a.Partition_disk(1000,&io,"first",utiles.B,utiles.Primary,utiles.Best)
+	fmt.Printf("Primary partition \"first\" at %d\n",abs_index)
+	abs_index2 := a.Partition_disk(1000,&io,"second",utiles.B,utiles.Primary,utiles.Best)
+	fmt.Printf("Primary partition \"second\" at %d\n",abs_index2)
+	abs_index3 := a.Partition_disk(6000,&io,"third extd",utiles.B,utiles.Extendend,utiles.Best)
+	fmt.Printf("Extended partition \"third extd\" at %d\n",abs_index3)
+	for _,partition := range mbr.Mbr_partitions().Spread(){
+		if partition.Part_start().Get() == -1{continue}
+		name_frags := partition.Part_name().Get()
+		name := strings.Join(name_frags[:],"")
+		fmt.Printf("Partition found at %d with name \"%s\"\n",partition.Part_start().Get(),name)
 	}
-	fmt.Println()
+	abs_index4 := a.Partition_disk(1000,&io,"first logic",utiles.B,utiles.Logic,utiles.Best)
+	fmt.Printf("Logic partition \"first logic\" at %d\n",abs_index4)
+	ebr := types.CreateExtendedBootRecord(&io,abs_index4)
+	fmt.Println(ebr.Get())
+
+	l_name := "sec logic"
+	abs_index4 = a.Partition_disk(1000,&io,l_name,utiles.B,utiles.Logic,utiles.Best)
+	fmt.Printf("Logic partition \"%s\" at %d\n",l_name,abs_index4)
+	ebr = types.CreateExtendedBootRecord(&io,abs_index4)
+	fmt.Println(ebr.Get())
+
+	l_name = "3 logic"
+	abs_index4 = a.Partition_disk(1000,&io,l_name,utiles.B,utiles.Logic,utiles.Best)
+	fmt.Printf("Logic partition \"%s\" at %d\n",l_name,abs_index4)
+	ebr = types.CreateExtendedBootRecord(&io,abs_index4)
+	fmt.Println(ebr.Get())
+
+	fmt.Println("Try to modify 3 logic space ")
+	algo:=a.Modify_partition_size_in_disk(-200,&io,l_name,utiles.B)
+	fmt.Println(algo)
+	result,ext_part:=a.Get_extended_partition(mbr)
+	if !result{panic("There was no extended partition")}
+	result,ebr = a.Find_logical_partition_by_name(ext_part,utiles.Into_ArrayChar16(l_name))
+	if !result{panic("There was no logical partition found")}
+	fmt.Println(ebr.Get())
+
+	fmt.Println("Try to modify extended space ")
+	algo = a.Modify_partition_size_in_disk(-200,&io,"third extd",utiles.B)
+	fmt.Println(algo)
+	fmt.Println(ext_part.Get())
+	sm:=a.Get_disk_partitions_space_manager(mbr)
+	sm.Log_chunks_state()
+	sm=a.Get_extended_part_space_manager(ext_part)
+	sm.Log_chunks_state()
+	io.Flush()
+	// mbr := types.CreateMasterBootRecord(&io,0)
 }
 func recover_and_erase_file_EXT2(){
-	io := datamanagment.IOService_from("./disco.txt")
+	io := datamanagment.IOService_from(aplication.DISK_CONTAINER_PATH+"/A.dsk")
+
 	f:=ext2.Recover_FormatEXT2(&io,0,utiles.First)
 	fmt.Println("Initizal state")
 	f.Log_block_bitmap()
@@ -83,19 +126,23 @@ func recover_and_erase_file_EXT2(){
 	f.Log_block_bitmap()
 	f.Log_inode_bitmap()
 	fmt.Println("Searching for home directory")
-	searched_indx,home_dir := f.Search_for_inode(inode,utiles.Into_ArrayChar12("home"))
+	searched_indx,home_dir_content := f.Search_for_inode(inode,utiles.Into_ArrayChar12("home"))
+	home_dir := types.CreateIndexNode(&io,home_dir_content.B_inodo().Get())
 	f.Log_block_bitmap()
 	f.Log_inode_bitmap()
 	fmt.Printf("Is searched dir found succsesfully: %t\n",(searched_indx != -1))
 	if searched_indx == -1{panic("Aborting test")}
 	fmt.Println("Searching for nested dir user")
-	searched_nested_indx,user_dir := f.Search_for_inode(home_dir,utiles.Into_ArrayChar12("user"))
+	searched_nested_indx,user_dir_content := f.Search_for_inode(home_dir,utiles.Into_ArrayChar12("user"))
+	user_dir := types.CreateIndexNode(&io,user_dir_content.B_inodo().Get())
 	fmt.Printf("Is searched \"user\" dir found succsesfully : %t\n",searched_nested_indx!=-1)
 	if searched_nested_indx == -1{panic("Aborting test")}
 	f.Log_block_bitmap()
 	f.Log_inode_bitmap()
 	fmt.Println("Reading file usuarios.txt in user dir")
 	file_inode_index,file_inode := f.Extract_inode(user_dir,utiles.Into_ArrayChar12("usuarios.txt"))
+	
+
 	fmt.Printf("Is file \"usuarios.txt\" extracted succsesfully : %t\n",file_inode_index!=-1)
 	if file_inode_index == -1{panic("Aborting test")}
 	f.Log_block_bitmap()
@@ -110,7 +157,8 @@ func recover_and_erase_file_EXT2(){
 	f.Log_inode_bitmap()
 }
 func recover_and_test_dir_and_file_EXT2(){
-	io := datamanagment.IOService_from("./disco.txt")
+	io := datamanagment.IOService_from(aplication.DISK_CONTAINER_PATH+"/A.dsk")
+
 	f:=ext2.Recover_FormatEXT2(&io,0,utiles.First)
 	fmt.Println("Initizal state")
 	f.Log_block_bitmap()
@@ -121,20 +169,24 @@ func recover_and_test_dir_and_file_EXT2(){
 	f.Log_block_bitmap()
 	f.Log_inode_bitmap()
 	fmt.Println("Searching for home directory")
-	searched_indx,home_dir := f.Search_for_inode(inode,utiles.Into_ArrayChar12("home"))
+	searched_indx,home_dir_content := f.Search_for_inode(inode,utiles.Into_ArrayChar12("home"))
+	home_dir := types.CreateIndexNode(&io,home_dir_content.B_inodo().Get())
 	f.Log_block_bitmap()
 	f.Log_inode_bitmap()
 	fmt.Printf("Is searched dir found succsesfully: %t\n",(searched_indx != -1))
 	if searched_indx == -1{panic("Aborting test")}
 	fmt.Println("Searching for nested dir user")
-	searched_nested_indx,user_dir := f.Search_for_inode(home_dir,utiles.Into_ArrayChar12("user"))
+	searched_nested_indx,user_dir_content := f.Search_for_inode(home_dir,utiles.Into_ArrayChar12("user"))
 	fmt.Printf("Is searched \"user\" dir found succsesfully : %t\n",searched_nested_indx!=-1)
+	user_dir := types.CreateIndexNode(&io,user_dir_content.B_inodo().Get())
 	if searched_nested_indx == -1{panic("Aborting test")}
 	f.Log_block_bitmap()
 	f.Log_inode_bitmap()
 	fmt.Println("Reading file usuarios.txt in user dir")
-	file_inode_index,file_inode := f.Search_for_inode(user_dir,utiles.Into_ArrayChar12("usuarios.txt"))
+	file_inode_index,file_inode_content := f.Search_for_inode(user_dir,utiles.Into_ArrayChar12("usuarios.txt"))
 	fmt.Printf("Is searched \"usuarios.txt\" file found succsesfully : %t\n",file_inode_index!=-1)
+	file_inode := types.CreateIndexNode(&io,file_inode_content.B_inodo().Get())
+
 	if file_inode_index == -1{panic("Aborting test")}
 	f.Log_block_bitmap()
 	f.Log_inode_bitmap()
@@ -143,8 +195,9 @@ func recover_and_test_dir_and_file_EXT2(){
 	fmt.Printf("(%s) ... (%s)\n",content[:2],content[len(content)-2:])
 }
 func format_and_test_dir_and_file_EXT2(){
-	io := datamanagment.IOService_from("./disco.txt")
-	f:=ext2.Format_new_FormatEXT2(&io,utiles.First,0,1_000_000)
+	io := datamanagment.IOService_from(aplication.DISK_CONTAINER_PATH+"/A.dsk")
+
+	f:=ext2.Format_new_FormatEXT2_and_extract(&io,utiles.First,0,1*int32(utiles.Mb))
 	fmt.Println("Initizal state")
 	f.Log_block_bitmap()
 	f.Log_inode_bitmap()
@@ -192,7 +245,8 @@ func format_and_test_dir_and_file_EXT2(){
 	f.Log_block_bitmap()
 	f.Log_inode_bitmap()
 	fmt.Println("Searching for home directory")
-	searched_indx,home_dir := f.Search_for_inode(inode,utiles.Into_ArrayChar12("home"))
+	searched_indx,home_dir_content := f.Search_for_inode(inode,utiles.Into_ArrayChar12("home"))
+	home_dir := types.CreateIndexNode(&io,home_dir_content.B_inodo().Get())
 	f.Log_block_bitmap()
 	f.Log_inode_bitmap()
 	fmt.Printf("Comparing both: searched and created: %t\n",created_indx==searched_indx)
@@ -209,7 +263,8 @@ func format_and_test_dir_and_file_EXT2(){
 		I_perm:  [3]string{"a","a","a"}, // change latter
 		},utiles.Into_ArrayChar12("user"))
 	fmt.Println("Searching and comparing created and searched nested dir")
-	searched_nested_indx,user_dir := f.Search_for_inode(home_dir,utiles.Into_ArrayChar12("user"))
+	searched_nested_indx,user_dir_content := f.Search_for_inode(home_dir,utiles.Into_ArrayChar12("user"))
+	user_dir := types.CreateIndexNode(&io,user_dir_content.B_inodo().Get())
 	fmt.Printf("Result is : %t\n",searched_nested_indx==nested_indx)
 	f.Log_block_bitmap()
 	f.Log_inode_bitmap()
@@ -226,6 +281,8 @@ func format_and_test_dir_and_file_EXT2(){
 		I_type:  string(utiles.File),
 		I_perm:  [3]string{"a","a","a"}, // change latter
 	},utiles.Into_ArrayChar12("usuarios.txt"))
+	f.Log_block_bitmap()
+	f.Log_inode_bitmap()
 	fmt.Println("Updating file")
 	const size = 64*13 + 64*16 + 64*16*16 + 64*16*16*16
 	data := make([]string,size)
@@ -251,8 +308,8 @@ func format_and_test_dir_and_file_EXT2(){
 	io.Flush()
 }
 func format_and_write_file_EXT2(){
-	io := datamanagment.IOService_from("./disco.txt")
-	f:=ext2.Format_new_FormatEXT2(&io,utiles.First,0,1_000_000)
+	io := datamanagment.IOService_from(aplication.DISK_CONTAINER_PATH+"/A.dsk")
+	f:=ext2.Format_new_FormatEXT2_and_extract(&io,utiles.First,0,1*int32(utiles.Mb))
 	fmt.Println("Initizal state")
 	f.Log_block_bitmap()
 	f.Log_inode_bitmap()
@@ -274,7 +331,7 @@ func format_and_write_file_EXT2(){
 	f.Log_block_bitmap()
 	f.Log_inode_bitmap()
 	fmt.Println("Updating file")
-	const size = 64*13 + 64*16 + 64*16*16 + 64*16*16*16 + 1
+	const size = 64*13 + 64*16 + 64*16*16 + 64*16*16*16
 	data := make([]string,size)
 	data[0] = "+"
 	for i := 1; i < size-1; i++ {
@@ -295,8 +352,8 @@ func format_and_write_file_EXT2(){
 	io.Flush()
 }
 func bestfit(){
-	sm := utiles.Spacemanager_from_free_spaces([]utiles.Space{
-		utiles.New_Space(0,3),utiles.New_Space(5,2),utiles.New_Space(10,10) },20)
+	sm := datamanagment.SpaceManager_from_free_spaces([]datamanagment.Space{
+		datamanagment.New_Space(0,3),datamanagment.New_Space(5,2),datamanagment.New_Space(10,10) },20)
 	sm.Log_chunks_state()
 	fmt.Printf("Best fit for 1 in index = %d\n",sm.Best_fit(1))
 	sm.Log_chunks_state()
@@ -316,8 +373,8 @@ func bestfit(){
 	fmt.Println("-----------------------------------------------")
 	fmt.Println("Simulating simetric case with occuped spaces")
 	fmt.Println("-----------------------------------------------")
-	sm = utiles.Spacemanager_from_occuped_spaces([]utiles.Space{
-		utiles.New_Space(3,2),utiles.New_Space(7,3),
+	sm = datamanagment.SpaceManager_from_occuped_spaces([]datamanagment.Space{
+		datamanagment.New_Space(3,2),datamanagment.New_Space(7,3),
 	},20)
 	sm.Log_chunks_state()
 	fmt.Printf("Best fit for 1 in index = %d\n",sm.Best_fit(1))
@@ -335,94 +392,16 @@ func bestfit(){
 	sm.Log_chunks_state()
 	sm.Ocupe_space_unchecked(2,1)
 	sm.Log_chunks_state()
-	fmt.Println("free last space")
-	// sm.Free_space(1,19)
+	fmt.Println("Free space in [7,15]")
+	sm.Free_space(9,7)
 	sm.Log_chunks_state()
-	// bitmap.Init_mapping()
-	// bitmap.Log_chunks_state()
-	// bitmap.Log_bitmap_state()
-	// fmt.Print("fittin for 2 in index = ")
-	// fmt.Println(bitmap.Best_fit(2))
-	// bitmap.Log_chunks_state()
-	// bitmap.Log_bitmap_state()
-	// fmt.Println("Erase 1 at 0")
-	// bitmap.Erase(1,0)
-	// bitmap.Log_chunks_state()
-	// bitmap.Log_bitmap_state()
-	// fmt.Print("fittin for 1 in index = ")
-	// fmt.Println(bitmap.Best_fit(1))
-	// bitmap.Log_chunks_state()
-	// bitmap.Log_bitmap_state()
-}
-// func bitmap_worstfit(){
-// 	io := datamanagment.IOService_from("./disco.txt")
-// 	bitmap := ext2.New_Bitmap(&io,0,15,9)
-// 	bitmap.Init_mapping()
-// 	bitmap.Log_chunks_state()
-// 	bitmap.Log_bitmap_state()
-// 	fmt.Print("fittin for 2 in index = ")
-// 	fmt.Println(bitmap.Worst_fit(2))
-// 	bitmap.Log_chunks_state()
-// 	bitmap.Log_bitmap_state()
-// // 	fmt.Println("Erase 1 at 2")
-// // 	bitmap.Erase(1,2)
-// // 	bitmap.Log_chunks_state()
-// // 	bitmap.Log_bitmap_state()
-// // 	fmt.Print("fittin for 1 in index = ")
-// // 	fmt.Println(bitmap.Worst_fit(1))
-// // 	bitmap.Log_chunks_state()
-// // 	bitmap.Log_bitmap_state()
-// }
-// func bitmap_firstfit(){
-// 	io := datamanagment.IOService_from("./disco.txt")
-// 	bitmap := ext2.New_Bitmap(&io,0,10,9)
-// 	bitmap.Init_mapping()
-// 	bitmap.Log_chunks_state()
-// 	bitmap.Log_bitmap_state()
-// 	fmt.Println(bitmap.First_fit(4))
-// 	bitmap.Log_chunks_state()
-// 	bitmap.Log_bitmap_state()
-// 	fmt.Println("Erase 1 at 2")
-// 	bitmap.Erase(1,2)
-// 	bitmap.Log_chunks_state()
-// 	bitmap.Log_bitmap_state()
-// 	fmt.Println("Erase 1 at 5")
-// 	bitmap.Erase(1,5)
-// 	bitmap.Log_chunks_state()
-// 	bitmap.Log_bitmap_state()
-// 	fmt.Println("Fit of 3")
-// 	fmt.Println(bitmap.First_fit(3))
-// 	bitmap.Log_chunks_state()
-// 	bitmap.Log_bitmap_state()
-// 	fmt.Println("Erase 1 at 6")
-// 	bitmap.Erase(1,6)
-// 	bitmap.Log_chunks_state()
-// 	bitmap.Log_bitmap_state()
-// 	fmt.Println("Fitting for 2")
-// 	fmt.Println(bitmap.First_fit(2))
-// 	bitmap.Log_chunks_state()
-// 	bitmap.Log_bitmap_state()
-// }
-
-
-
-func simulate_writing() {
-	io := datamanagment.IOService_from("./disco.txt")
-	mbr := types.CreateMasterBootRecord(&io, 0)
-	mbr.Mbr_tamano().Set(1034)
-	partition1 := mbr.Mbr_partitions().No(0)
-	partition1.Part_status().Set("Y")
-	partition1.Part_name().Set(utiles.Into_ArrayChar16("1234567890******************"))
-	io.Flush()
-}
-func simulate_reading() {
-	io := datamanagment.IOService_from("./disco.txt")
-	mbr := types.CreateMasterBootRecord(&io, 0)
-	fmt.Println("This is the partition name")
-	fmt.Print("\"")
-	for _, c := range mbr.Mbr_partitions().No(0).Part_name().Spread() {
-		fmt.Print(c.Get())
-	}
-	fmt.Print("\"")
-	fmt.Println()
+	fmt.Println("Free space in [3,5]")
+	sm.Free_space(2,3)
+	sm.Log_chunks_state()
+	fmt.Println("Ocupe space in [9,13]")
+	sm.Ocupe_raw_space(5,9)
+	sm.Log_chunks_state()
+	fmt.Println("Ocupe space in [5,5]")
+	sm.Ocupe_raw_space(1,5)
+	sm.Log_chunks_state()
 }

@@ -1,7 +1,8 @@
-package utiles
+package datamanagment
 
 import (
 	"fmt"
+	// "project/internal/utiles"
 )
 type SpaceManager struct{
 	index int32
@@ -9,12 +10,12 @@ type SpaceManager struct{
 	free_spaces []Space
 }
 type Space struct{
-	index int32
-	length int32
+	Index int32
+	Length int32
 }
 func New_Space(indx int32,length int32) Space{return Space{
-	index: indx,
-	length:         length,
+	Index: indx,
+	Length:         length,
 }}
 type SpaceComparation string
 const (
@@ -26,12 +27,12 @@ const (
 	Same SpaceComparation = "Same"
 	Cover SpaceComparation = "Cover"
 )
-func (self *Space) Boundary() int32{return self.index + self.length}
-func (self *Space) Show() string{return fmt.Sprintf("[%d,%d]",self.index,self.Boundary()-1)}
+func (self *Space) Boundary() int32{return self.Index + self.Length}
+func (self *Space) Show() string{return fmt.Sprintf("[%d,%d]",self.Index,self.Boundary()-1)}
 func (self *Space) Contains(sp Space) SpaceComparation{
 
-	if self.index <= sp.index && self.Boundary() >= sp.Boundary(){
-		if self.index == sp.index{
+	if self.Index <= sp.Index && self.Boundary() >= sp.Boundary(){
+		if self.Index == sp.Index{
 			if self.Boundary() == sp.Boundary(){return Same} 
 			return ColindantIn
 		}
@@ -41,57 +42,59 @@ func (self *Space) Contains(sp Space) SpaceComparation{
 		return In
 	}
 
-	if self.index == sp.Boundary() || self.Boundary() == sp.index{
+	if self.Index == sp.Boundary() || self.Boundary() == sp.Index{
 		return ColindantOut
 	}
 
-	if self.index <= sp.index && self.Boundary() > sp.index &&
+	if self.Index <= sp.Index && self.Boundary() > sp.Index &&
 	 self.Boundary() < sp.Boundary(){
 		return Partial
 	}
-	if self.index > sp.index && self.index < sp.Boundary() &&
+	if self.Index > sp.Index && self.Index < sp.Boundary() &&
 	 self.Boundary() >= sp.Boundary(){
 		return Partial
 	}
-	if self.index > sp.index && self.Boundary() < sp.Boundary(){
+	if self.Index > sp.Index && self.Boundary() < sp.Boundary(){
 		return Cover
 	}
 	return Out
 
 }
 func (self *Space) extend_with(sp Space){
-	if self.index == sp.Boundary(){
-		self.index = sp.index
-		self.length += sp.length
+	if self.Index == sp.Boundary(){
+		self.Index = sp.Index
+		self.Length += sp.Length
 		return
-	} else if self.Boundary() == sp.index{
-		self.length += sp.length
+	} else if self.Boundary() == sp.Index{
+		self.Length += sp.Length
 		return
 	}
 	panic(fmt.Sprintf("Can not extend %s with %s",self.Show(),sp.Show()))
 }
 func (self *Space) reduce_with(sp Space){
-	if self.index == sp.index{
+	if self.Index == sp.Index{
 		if self.Boundary() == sp.Boundary(){
 			panic(fmt.Sprintf("Can not reduce since both are equal %s AND %s",self.Show(),sp.Show()))
 		} 
-		self.length -=sp.length
+		self.Index = sp.Boundary()
+		self.Length -=sp.Length
+		return
 	}
 	if self.Boundary() == sp.Boundary(){
-		self.index = sp.index
-		self.length -=sp.length
+		self.Length -=sp.Length
+		return
 	}
 	panic(fmt.Sprintf("Can not reduce %s with %s",self.Show(),sp.Show()))
 }
 func (self *Space) Split(sp Space)(Space,Space){
-	if self.index < sp.index && self.Boundary() > sp.Boundary(){
+	if self.Index < sp.Index && self.Boundary() > sp.Boundary(){
 		first_half := Space{
-			index: self.index,
-			length: sp.index - self.index,
+			Index: self.Index,
+			Length: sp.Index - self.Index,
 		}
 		second_half := Space{
-			index: sp.Boundary(),
-			length: self.Boundary() - sp.Boundary(),
+			Index: sp.Boundary(),
+			Length: self.Boundary() - sp.Boundary(),
 		}
 		return first_half, second_half
 	}
@@ -112,7 +115,15 @@ func (self *Space) Split(sp Space)(Space,Space){
 
 
 
-func Spacemanager_from_free_spaces(free_spaces []Space,total_length int32) SpaceManager{
+func Empty_SpaceManager_from(total_length int32) SpaceManager{
+	new_spman := SpaceManager{
+		index:       0,
+		length:      total_length,
+		free_spaces: []Space{},
+	}
+	return new_spman
+}
+func SpaceManager_from_free_spaces(free_spaces []Space,total_length int32) SpaceManager{
 	new_spman := SpaceManager{
 		index:       0,
 		length:      total_length,
@@ -120,17 +131,17 @@ func Spacemanager_from_free_spaces(free_spaces []Space,total_length int32) Space
 	}
 	return new_spman
 }
-func Spacemanager_from_occuped_spaces(occuped_spaces []Space,total_length int32) SpaceManager{
+func SpaceManager_from_occuped_spaces(occuped_spaces []Space,total_length int32) SpaceManager{
 	new_spman := SpaceManager{
 		index:       0,
 		length:      total_length,
 		free_spaces: []Space{Space{
-			index: 0,
-			length:         total_length,
+			Index: 0,
+			Length:         total_length,
 		}},
 	}
 	for _, occuped := range occuped_spaces {
-		succed := new_spman.Ocupe_raw_space(occuped.length,occuped.index)
+		succed := new_spman.Ocupe_raw_space(occuped.Length,occuped.Index)
 		if !succed{
 			panic("")
 		}
@@ -144,8 +155,8 @@ func (self *SpaceManager) Best_fit(for_length int32) int32{
 	candidate := 0
 	candidate_exist := false
 	for i := 0; i < len(self.free_spaces); i++ {
-		if for_length <= self.free_spaces[i].length &&
-		 self.free_spaces[candidate].length >= self.free_spaces[i].length{
+		if for_length <= self.free_spaces[i].Length &&
+		 self.free_spaces[candidate].Length >= self.free_spaces[i].Length{
 			candidate = i
 			candidate_exist = true
 		}
@@ -159,8 +170,8 @@ func (self *SpaceManager) Worst_fit(for_length int32) int32{
 	candidate := 0
 	candidate_exist := false
 	for i := 0; i < len(self.free_spaces); i++ {
-		if for_length <= self.free_spaces[i].length &&
-		 self.free_spaces[candidate].length <= self.free_spaces[i].length{
+		if for_length <= self.free_spaces[i].Length &&
+		 self.free_spaces[candidate].Length <= self.free_spaces[i].Length{
 			candidate = i
 			candidate_exist = true
 		}
@@ -172,7 +183,7 @@ func (self *SpaceManager) Worst_fit(for_length int32) int32{
 }
 func (self *SpaceManager) First_fit(for_length int32) int32{
 	for i := 0; i < len(self.free_spaces); i++ {
-		if for_length <= self.free_spaces[i].length {
+		if for_length <= self.free_spaces[i].Length {
 			return int32(i)
 		}
 	}
@@ -200,20 +211,23 @@ func (self *SpaceManager) Ocupe_raw_space(for_length int32, at_bit_no int32)bool
 				return true
 			case Partial:
 				fmt.Printf("%s %s with %s\n",self.free_spaces[i].Show(),self.free_spaces[i].Contains(trgt_space),trgt_space.Show())
-				panic("The requested space is invading other unexpected areas, and canot be properly handled")
+				fmt.Println("The requested space is invading other unexpected areas, and canot be properly handled")
+				return false
 			case Out:
 				continue
 			default:
-				panic("Anything else is expected, since all cases are handeled, this means that the data is corrupted")
+				fmt.Println("Anything else is expected, since all cases are handeled, this means that the data is corrupted")
+				return false
 		}	
 	}
-	panic("The space requested to ocupe has fail")
+	fmt.Println("The space requested to ocupe has fail")
+	return false
 }
 func (self *SpaceManager) Ocupe_space_unchecked(space_no int,for_length int32)int32{
-	bit_no := self.free_spaces[space_no].index
-	self.free_spaces[space_no].index+=for_length
-	self.free_spaces[space_no].length-=for_length
-	if self.free_spaces[space_no].length == 0{
+	bit_no := self.free_spaces[space_no].Index
+	self.free_spaces[space_no].Index+=for_length
+	self.free_spaces[space_no].Length-=for_length
+	if self.free_spaces[space_no].Length == 0{
 		self.free_spaces = append((self.free_spaces)[:space_no], (self.free_spaces)[space_no+1:]...)
 	}
 	return bit_no
@@ -235,68 +249,39 @@ func (self *SpaceManager) Free_space(for_length int32, at_bit_no int32)bool{
 					if result == ColindantOut{
 						self.free_spaces[i].extend_with(self.free_spaces[i+1])
 						self.free_spaces = append((self.free_spaces)[:i+1], (self.free_spaces)[i+2:]...)
-					}else if result != Out{panic("Abnormal result")}
+					}else if result != Out{
+						(fmt.Printf("Abnormal result for %s by %s with case %s",self.free_spaces[i].Show(),trgt_space.Show(),result))
+						return false
+					}
 				}
 				return true
 			case Out: 
-				if trgt_space.index < self.free_spaces[i].index{
+				if trgt_space.Index < self.free_spaces[i].Index{
 				closest = i}
 				continue
 			default:
-				panic(fmt.Sprintf("Anything else is expected, since all cases are handeled but got %s in %s by %s, this means that the data is corrupted",result,self.free_spaces[i].Show(),trgt_space.Show()))
+				(fmt.Printf("Anything else is expected, since all cases are handeled but got %s in %s by %s, this means that the data is corrupted",result,self.free_spaces[i].Show(),trgt_space.Show()))
+				return false
+
 		}	
 	}
 	self.free_spaces = append(self.free_spaces[:closest+1], self.free_spaces[closest:]...)
 	self.free_spaces[closest] = trgt_space
 	return true
-
-	// panic("The space requested to ocupe has fail")
-	// for i := 0; i < len(self.free_spaces); i++ {
-	// 	if self.free_spaces[i].index + self.free_spaces[i].length == at_bit_no {
-	// 		self.free_spaces[i].length += for_length			
-	// 		return true
-	// 	}else if at_bit_no + for_length == self.free_spaces[i].index{
-	// 		self.free_spaces[i].length += for_length			
-	// 		self.free_spaces[i].index = at_bit_no 
-	// 		return true
-	// 	}
-	// }
-
-	// closest_chunk_index := len(self.free_spaces) 
-	// for i,chunk := range self.free_spaces{
-	// 	if at_bit_no < chunk.index{
-	// 		closest_chunk_index = i
-	// 		if at_bit_no + for_length < chunk.index{break}
-	// 		panic(fmt.Sprintf("Space collition detected at %d inside [%d,%d] bounds, caused by requested space liberation [%d,%d]",
-	// 		at_bit_no + for_length,
-	// 		chunk.index,
-	// 		chunk.length + chunk.index,
-	// 		at_bit_no,for_length+at_bit_no))
-	// 	}else if at_bit_no == chunk.index{
-	// 		panic(fmt.Sprintf("Space collition detected at %d inside [%d,%d] bounds, caused by requested space liberation [%d,%d]",
-	// 		at_bit_no,
-	// 		chunk.index,
-	// 		chunk.length + chunk.index,
-	// 		at_bit_no,for_length+at_bit_no))
-	// 	}
-	// }
-	// if at_bit_no + for_length > self.length{
-	// 	panic(fmt.Sprintf("Attempting to erase space out of arena bondaries (overflow at %d for max limit %d",
-	// 	at_bit_no + for_length,self.length))
-	// }
-
-	// self.free_spaces = append(self.free_spaces[:closest_chunk_index+1], self.free_spaces[closest_chunk_index:]...)
-	// self.free_spaces[closest_chunk_index] = Space{
-	// 	index: at_bit_no,    
-	// 	length: for_length,	
-	// }
-	// return true
 }
+
+
+
+
+
+
+
+
 
 func (self *SpaceManager) Log_chunks_state(){
 	for _,b :=range self.free_spaces{
 		// fmt.Printf("{at=%d,len(%d)},",b.relative_index,b.length)
-		fmt.Printf("[%d,%d],",b.index,b.length+b.index-1)
+		fmt.Printf("[%d,%d],",b.Index,b.Length+b.Index-1)
 	}
 	fmt.Println()
 }

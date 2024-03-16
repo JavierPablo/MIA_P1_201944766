@@ -26,6 +26,12 @@ const (
 	File InodeType = "1"
 )
 
+type Format int32
+const (
+	Ext2 Format = 2
+	Ext3 Format = 3
+)
+
 type FitCriteria string
 const (
 	First FitCriteria = "F"
@@ -80,4 +86,54 @@ func Current_Time()types.TimeHolder{
 		Month:  int32(time.Month()),
 		Year:   int32(time.Year()),
 	}
+}
+var NO_TIME types.TimeHolder = types.TimeHolder{
+	Hour:   0,
+	Minute: 0,
+	Second: 0,
+	Day:    0,
+	Month:  0,
+	Year:   0,
+}
+func Translate_fit(fit string)FitCriteria{
+	switch fit {
+	case string(First):
+		return First
+	case string(Worst):
+		return Worst
+	case string(Best):
+		return Best
+	}
+	panic("Fit criteria not valid")
+}
+
+
+
+
+type NameCriteria struct{
+	chars [12]Char
+}
+func (self *NameCriteria) Match(name [12]string)bool{
+	for i := 0; i < 12; i++ {
+		if !self.chars[i].Matches(name[i]){return false}
+	}
+	return true
+}
+type Char struct{
+	char string
+	any_case bool
+}
+func New_Char(ch string)Char{
+	return Char{
+		char:     ch,
+		any_case: false,
+	}
+}
+var ANY_CHAR Char=Char{
+	char:     "",
+	any_case: true,
+}
+func (self *Char) Matches(trgt string) bool {
+	if self.any_case {return true}
+	return  self.char == trgt
 }

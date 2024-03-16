@@ -21,7 +21,7 @@ type FormatEXT2 struct{
 	Inodes_section Section
 }
 
-func Format_new_FormatEXT2(super_service *datamanagment.IOService,fit utiles.FitCriteria,index int32,partition_size int32)FormatEXT2{
+func Format_new_fresh_FormatEXT2(super_service *datamanagment.IOService,fit utiles.FitCriteria,index int32,partition_size int32){
 	super_block:=    types.CreateSuperBlock(super_service,index)
 
 	var inodes_size int32 = types.CreateIndexNode(super_service,0).Size
@@ -34,13 +34,59 @@ func Format_new_FormatEXT2(super_service *datamanagment.IOService,fit utiles.Fit
 	sec_inode_start:=bm_block_start+3*n
 	sec_block_start:=sec_inode_start+inodes_size*n
 	super_block.Set(types.SuperBlockHolder{
-		S_filesystem_type:   2,
+		S_filesystem_type:   int32(utiles.Ext2),
 		S_inodes_count:      n,
 		S_blocks_count:      n*3,
 		S_free_blocks_count: n*3,
 		S_free_inodes_count: n,
-		S_mtime:             types.TimeHolder{},
-		S_umtime:            types.TimeHolder{},
+		S_mtime:             utiles.NO_TIME,
+		S_umtime:            utiles.NO_TIME,
+		S_mnt_count:         0,
+		S_magic:             0,
+		S_inode_s:           inodes_size,
+		S_block_s:           blocks_size,
+		S_firts_ino:         sec_inode_start,
+		S_first_blo:         sec_block_start,
+		S_bm_inode_start:    bm_inode_start,
+		S_bm_block_start:    bm_block_start,
+		S_inode_start:       sec_inode_start,
+		S_block_start:       sec_block_start,
+	})
+	
+	format := FormatEXT2{
+		Fit: fit,
+		super_service: super_service,
+		Super_block:    super_block,
+		Block_bitmap:  New_Bitmap(super_service,bm_block_start,3*n,super_block.S_free_blocks_count()),
+		Inodes_bitmap:   New_Bitmap(super_service,bm_inode_start,n,super_block.S_free_inodes_count()),
+		Block_section:  New_section(super_service,sec_block_start,3*n*blocks_size,blocks_size),
+		Inodes_section: New_section(super_service,sec_inode_start,n*inodes_size,inodes_size),
+	}
+	format.Block_bitmap.Clear()
+	format.Inodes_bitmap.Clear()
+	format.Block_section.Clear()
+	format.Inodes_section.Clear()
+}
+func Format_new_FormatEXT2_and_extract(super_service *datamanagment.IOService,fit utiles.FitCriteria,index int32,partition_size int32)FormatEXT2{
+	super_block:=    types.CreateSuperBlock(super_service,index)
+
+	var inodes_size int32 = types.CreateIndexNode(super_service,0).Size
+	var blocks_size int32 =types.CreateFileBlock(super_service,0).Size
+
+	n:=(partition_size-super_block.Size)/(int32(4)+inodes_size+blocks_size*int32(2))
+	
+	bm_inode_start:=index+super_block.Size
+	bm_block_start:=bm_inode_start+n
+	sec_inode_start:=bm_block_start+3*n
+	sec_block_start:=sec_inode_start+inodes_size*n
+	super_block.Set(types.SuperBlockHolder{
+		S_filesystem_type:   int32(utiles.Ext2),
+		S_inodes_count:      n,
+		S_blocks_count:      n*3,
+		S_free_blocks_count: n*3,
+		S_free_inodes_count: n,
+		S_mtime:             utiles.NO_TIME,
+		S_umtime:            utiles.NO_TIME,
 		S_mnt_count:         0,
 		S_magic:             0,
 		S_inode_s:           inodes_size,
@@ -101,13 +147,13 @@ func Recover_FormatEXT2(super_service *datamanagment.IOService,index int32, fit 
 		Block_section:  New_section(super_service,sec_block_start,blocks_count*blocks_size,blocks_size),
 		Inodes_section: New_section(super_service,sec_inode_start,inodes_count*inodes_size,inodes_size),
 	}
-
-	format.Block_bitmap.Init_mapping()
-	format.Inodes_bitmap.Init_mapping()
-
 	return format
 }
 
+func (self *FormatEXT2) Init_bitmap_mapping() {
+	self.Block_bitmap.Init_mapping()
+	self.Inodes_bitmap.Init_mapping()
+}
 
 
 
@@ -193,6 +239,14 @@ func (self *FormatEXT2) Create_Inode(inode_trgt types.IndexNodeHolder) (int32,ty
 	inode.Set(inode_trgt)
 	return abs_index, inode
 }
+
+
+
+
+
+
+
+
 
 
 

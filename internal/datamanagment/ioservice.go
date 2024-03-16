@@ -13,6 +13,12 @@ type IOService struct{
 	buffer	[]byte
 	file_path string
 }
+func IOService_from_bytes(file_path string, bytes []byte) IOService{
+	return IOService{
+		buffer: bytes,
+		file_path :file_path,
+	}
+}
 func IOService_from(file_path string) IOService{
 	
 	b, err := os.ReadFile(file_path)
