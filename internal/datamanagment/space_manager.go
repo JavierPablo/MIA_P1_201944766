@@ -9,6 +9,7 @@ type SpaceManager struct{
 	length int32
 	free_spaces []Space
 }
+func (self *SpaceManager) Get_length()int32{return self.length}
 type Space struct{
 	Index int32
 	Length int32
@@ -131,7 +132,7 @@ func SpaceManager_from_free_spaces(free_spaces []Space,total_length int32) Space
 	}
 	return new_spman
 }
-func SpaceManager_from_occuped_spaces(occuped_spaces []Space,total_length int32) SpaceManager{
+func SpaceManager_from_occuped_spaces(occuped_spaces []Space,total_length int32) (SpaceManager,error){
 	new_spman := SpaceManager{
 		index:       0,
 		length:      total_length,
@@ -141,12 +142,10 @@ func SpaceManager_from_occuped_spaces(occuped_spaces []Space,total_length int32)
 		}},
 	}
 	for _, occuped := range occuped_spaces {
-		succed := new_spman.Ocupe_raw_space(occuped.Length,occuped.Index)
-		if !succed{
-			panic("")
-		}
+		err := new_spman.Ocupe_raw_space(occuped.Length,occuped.Index)
+		if err !=nil {return SpaceManager{},err}
 	}
-	return new_spman
+	return new_spman,nil
 }
 func (self *SpaceManager) Chunk_no(i int32) *Space{
 	return &self.free_spaces[i]
@@ -189,39 +188,39 @@ func (self *SpaceManager) First_fit(for_length int32) int32{
 	}
 	return -1
 }
-func (self *SpaceManager) Ocupe_raw_space(for_length int32, at_bit_no int32)bool{
+func (self *SpaceManager) Ocupe_raw_space(for_length int32, at_bit_no int32)error{
 	trgt_space := New_Space(at_bit_no,for_length)
 	if trgt_space.Boundary() > self.length {
-		panic("The requested space is passing the bondarys of the current arena")
+		return fmt.Errorf("The requested space is passing the bondarys of the current arena")
 	}
 	for i := 0; i < len(self.free_spaces); i++ {
 		result := self.free_spaces[i].Contains(trgt_space)
 		switch result {
 			case ColindantIn:
 				self.free_spaces[i].reduce_with(trgt_space)
-				return true
+				return nil
 			case In:
 				first,last:=self.free_spaces[i].Split(trgt_space)
 				self.free_spaces[i] = first
 				self.free_spaces = append((self.free_spaces)[:i+1], (self.free_spaces)[i:]...)
 				self.free_spaces[i+1] = last
-				return true
+				return nil
 			case Same:
 				self.free_spaces = append((self.free_spaces)[:i], (self.free_spaces)[i+1:]...)
-				return true
+				return nil
 			case Partial:
-				fmt.Printf("%s %s with %s\n",self.free_spaces[i].Show(),self.free_spaces[i].Contains(trgt_space),trgt_space.Show())
-				fmt.Println("The requested space is invading other unexpected areas, and canot be properly handled")
-				return false
+				
+				return fmt.Errorf("%s %s with %s\n%s\n",self.free_spaces[i].Show(),self.free_spaces[i].Contains(trgt_space),trgt_space.Show(),
+				"The requested space is invading other unexpected areas, and canot be properly handled")
 			case Out:
 				continue
 			default:
-				fmt.Println("Anything else is expected, since all cases are handeled, this means that the data is corrupted")
-				return false
+				return fmt.Errorf("Anything else is expected, since all cases are handeled, this means that the data is corrupted")
+				
 		}	
 	}
-	fmt.Println("The space requested to ocupe has fail")
-	return false
+	return fmt.Errorf("The space requested to ocupe has fail")
+	
 }
 func (self *SpaceManager) Ocupe_space_unchecked(space_no int,for_length int32)int32{
 	bit_no := self.free_spaces[space_no].Index
@@ -233,11 +232,11 @@ func (self *SpaceManager) Ocupe_space_unchecked(space_no int,for_length int32)in
 	return bit_no
 }
 
-func (self *SpaceManager) Free_space(for_length int32, at_bit_no int32)bool{
+func (self *SpaceManager) Free_space(for_length int32, at_bit_no int32)error{
 	trgt_space := New_Space(at_bit_no,for_length)
 	closest := len(self.free_spaces)
 	if trgt_space.Boundary() > self.length {
-		panic("The requested space is passing the bondarys of the current arena")
+		return fmt.Errorf("The requested space is passing the bondarys of the current arena")
 	}
 	for i := 0; i < len(self.free_spaces); i++ {
 		result := self.free_spaces[i].Contains(trgt_space)
@@ -250,24 +249,24 @@ func (self *SpaceManager) Free_space(for_length int32, at_bit_no int32)bool{
 						self.free_spaces[i].extend_with(self.free_spaces[i+1])
 						self.free_spaces = append((self.free_spaces)[:i+1], (self.free_spaces)[i+2:]...)
 					}else if result != Out{
-						(fmt.Printf("Abnormal result for %s by %s with case %s",self.free_spaces[i].Show(),trgt_space.Show(),result))
-						return false
+						return fmt.Errorf("Abnormal result for %s by %s with case %s",self.free_spaces[i].Show(),trgt_space.Show(),result)
 					}
 				}
-				return true
+
+				return nil
 			case Out: 
 				if trgt_space.Index < self.free_spaces[i].Index{
 				closest = i}
 				continue
 			default:
-				(fmt.Printf("Anything else is expected, since all cases are handeled but got %s in %s by %s, this means that the data is corrupted",result,self.free_spaces[i].Show(),trgt_space.Show()))
-				return false
+				return fmt.Errorf("Anything else is expected, since all cases are handeled but got %s in %s by %s, this means that the data is corrupted",result,self.free_spaces[i].Show(),trgt_space.Show())
+				
 
 		}	
 	}
 	self.free_spaces = append(self.free_spaces[:closest+1], self.free_spaces[closest:]...)
 	self.free_spaces[closest] = trgt_space
-	return true
+	return nil
 }
 
 
@@ -278,6 +277,9 @@ func (self *SpaceManager) Free_space(for_length int32, at_bit_no int32)bool{
 
 
 
+func (self *SpaceManager) Free_spaces()[]Space{
+	return self.free_spaces
+}
 func (self *SpaceManager) Log_chunks_state(){
 	for _,b :=range self.free_spaces{
 		// fmt.Printf("{at=%d,len(%d)},",b.relative_index,b.length)

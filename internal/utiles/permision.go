@@ -68,6 +68,19 @@ func (self *Permision) Can_exec()bool{
 	return self.execute == 1
 }
 func (self *Permision) To_string()string{
-	return string(self.execute*1 + self.read*2 + self.write*4)
+	return strconv.Itoa(self.execute*1 + self.read*2 + self.write*4)
+	
+}
+
+
+
+
+func Parse_to_ugo(perm string)(UGOPermision,error){
+	if len(perm) != 3 {return UGOPermision{},fmt.Errorf("wrong permition format")}
+	return UGOPermision{
+		User:  Permision_from_str(string(perm[0])),
+		Group: Permision_from_str(string(perm[1])),
+		Other: Permision_from_str(string(perm[2])),
+	},nil
 	
 }

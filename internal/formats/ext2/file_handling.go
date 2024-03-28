@@ -92,7 +92,7 @@ func (self *FormatEXT2) Update_file(file_inode *types.IndexNode,at int32, data [
 					ptr_block := types.CreatePointerBlock(self.super_service,ptrs[i])
 					self.erase_pointer_block_content(&ptr_block,int32(i - 13),0)
 				}
-				// fmt.Printf("DEBUG: pointer value is = %d for i = %d\n",ptrs[i],i)
+				
 				bit := self.Block_section.Bit_no_for(ptrs[i])
 				// fmt.Printf("DEBUG: bit value is = %d\n",bit)
 				self.Block_bitmap.Erase(1,bit)

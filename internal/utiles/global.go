@@ -1,6 +1,7 @@
 package utiles
 
 import (
+	"fmt"
 	"project/internal/types"
 	"strings"
 	"time"
@@ -95,27 +96,59 @@ var NO_TIME types.TimeHolder = types.TimeHolder{
 	Month:  0,
 	Year:   0,
 }
-func Translate_fit(fit string)FitCriteria{
+func Translate_size_unit(unit string)(SizeUnit,error){
+	switch unit {
+	case "K":
+		return Kb,nil
+	case "M":
+		return Mb,nil
+	case "B":
+		return B,nil
+	}
+	return B,fmt.Errorf("size unit criteria not valid for %s",unit)
+}
+func Translate_fit(fit string)(FitCriteria,error){
 	switch fit {
 	case string(First):
-		return First
+		return First,nil
 	case string(Worst):
-		return Worst
+		return Worst,nil
 	case string(Best):
-		return Best
+		return Best,nil
 	}
-	panic("Fit criteria not valid")
+	return "",fmt.Errorf("Fit criteria not valid for %s",fit)
+}
+func Translate_partition_type(type_ string)(PartitionType,error){
+	switch type_ {
+	case string(Primary):
+		return Primary,nil
+	case string(Extendend):
+		return Extendend,nil
+	case string(Logic):
+		return Logic,nil
+	}
+	return "",fmt.Errorf("Partition type not valid for %s",type_)
+}
+func Translate_format_type(format string)(Format,error){
+	switch format {
+	case "2fs":
+		return Ext2,nil
+	case "3fs":
+		return Ext3,nil
+	}
+	
+	return 1,fmt.Errorf("format type not valid for %s",format)
 }
 
 
 
 
 type NameCriteria struct{
-	chars [12]Char
+	Chars [12]Char
 }
 func (self *NameCriteria) Match(name [12]string)bool{
 	for i := 0; i < 12; i++ {
-		if !self.chars[i].Matches(name[i]){return false}
+		if !self.Chars[i].Matches(name[i]){return false}
 	}
 	return true
 }

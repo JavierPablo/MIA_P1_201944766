@@ -75,8 +75,13 @@ func (self Character)Set(a string) {
 }
 func (self Character)Get() string{
 	chunk := self.Super_service.Read(1,self.Index)
+	// dsf :=(*chunk)[0]
+	// if (*chunk)[0] < byte(32) {return "-"}
 	return string(*chunk)
 }
 func (self Character)Dot_label() string{
-	return self.Get()
+	chunk := self.Super_service.Read(1,self.Index)
+	// dsf :=(*chunk)[0]
+	if int8((*chunk)[0]) < int8(32) {return "-"}
+	return string(*chunk)
 }

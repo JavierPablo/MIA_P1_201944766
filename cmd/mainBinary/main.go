@@ -1,356 +1,596 @@
 package main
 
 import (
-	// "project/internal/parser"
+	"bufio"
 	"fmt"
+	"math/rand"
+	"os"
 	"project/internal/aplication"
 	"project/internal/datamanagment"
-	"project/internal/formats/ext2"
-	"project/internal/types"
+	"project/internal/parser"
 	"project/internal/utiles"
+	"strconv"
 	"strings"
+
+	"github.com/alecthomas/participle/v2"
+	"github.com/fatih/color"
 )
-
-func main() {
-	// a.Make_disk(3,utiles.Mb,utiles.First)
-	
-	// format_and_write_file_EXT2()
-	// format_and_test_dir_and_file_EXT2()
-	// recover_and_test_dir_and_file_EXT2()
-	// recover_and_erase_file_EXT2()
-	
-	// a:=aplication.Aplication{}
-	// a.Make_disk(10,utiles.Kb,utiles.First)
-	// partition_creation_and_mod_test()
-	// partition_recovery_test()
-	
-	
+var Ok = color.New(color.FgGreen)
+var Result = color.New(color.FgCyan)
+var Err = color.New(color.FgRed)
+func main(){
+	main_program()
+	// fmt.Println(string(utiles.File))
 	// parser.Some_test()
-
-	// a.Make_disk(1,utiles.Kb,utiles.First)
-	io := datamanagment.IOService_from(aplication.DISK_CONTAINER_PATH+"/B.dsk")
-	mbr := types.CreateMasterBootRecord(&io,0)
-	fmt.Println(mbr.Dot_label())
 }
 
-func parser_testing(){
-
-}
-
-
-
-func partition_recovery_test(){
-	a:=aplication.Aplication{}
-	// a.Make_disk(1,utiles.Kb,utiles.First)
-	io := datamanagment.IOService_from(aplication.DISK_CONTAINER_PATH+"/B.dsk")
-	mbr := types.CreateMasterBootRecord(&io,0)
-
-	fmt.Println("Try reading 3 logic space ")
-	result,ext_part:=a.Get_extended_partition(mbr)
-	if !result{panic("There was no extended partition")}
-	result,ebr := a.Find_logical_partition_by_name(ext_part,utiles.Into_ArrayChar16("3 logic"))
-	if !result{panic("There was no logical partition found")}
-	fmt.Println(ebr.Get())
-
-	fmt.Println("Try reading extended space ")
-	fmt.Println(ext_part.Get())
-	sm:=a.Get_disk_partitions_space_manager(mbr)
-	sm.Log_chunks_state()
-	sm=a.Get_extended_part_space_manager(ext_part)
-	sm.Log_chunks_state()
-}
-func partition_creation_and_mod_test(){
-	a:=aplication.Aplication{}
-	// a.Make_disk(1,utiles.Kb,utiles.First)
-	io := datamanagment.IOService_from(aplication.DISK_CONTAINER_PATH+"/B.dsk")
-	mbr := types.CreateMasterBootRecord(&io,0)
-	abs_index := a.Partition_disk(1000,&io,"first",utiles.B,utiles.Primary,utiles.Best)
-	fmt.Printf("Primary partition \"first\" at %d\n",abs_index)
-	abs_index2 := a.Partition_disk(1000,&io,"second",utiles.B,utiles.Primary,utiles.Best)
-	fmt.Printf("Primary partition \"second\" at %d\n",abs_index2)
-	abs_index3 := a.Partition_disk(6000,&io,"third extd",utiles.B,utiles.Extendend,utiles.Best)
-	fmt.Printf("Extended partition \"third extd\" at %d\n",abs_index3)
-	for _,partition := range mbr.Mbr_partitions().Spread(){
-		if partition.Part_start().Get() == -1{continue}
-		name_frags := partition.Part_name().Get()
-		name := strings.Join(name_frags[:],"")
-		fmt.Printf("Partition found at %d with name \"%s\"\n",partition.Part_start().Get(),name)
+func main_program(){
+	Ok.Println("Bienvenido al systema")
+	app:=aplication.Aplication{}
+	parser:=parser.Get_parser()
+	const DISK_CONTAINER_PATH string = "./MIA/P1"
+	ioservice_pool := datamanagment.New_IOServicePool(DISK_CONTAINER_PATH)
+	reader := bufio.NewReader(os.Stdin)
+	for{
+		input,err := reader.ReadString('\n')
+		if err != nil {
+			Err.Println("Error reading input:", err)
+			return
+		}
+		execute(input,&app,&ioservice_pool,DISK_CONTAINER_PATH,parser)
 	}
-	abs_index4 := a.Partition_disk(1000,&io,"first logic",utiles.B,utiles.Logic,utiles.Best)
-	fmt.Printf("Logic partition \"first logic\" at %d\n",abs_index4)
-	ebr := types.CreateExtendedBootRecord(&io,abs_index4)
-	fmt.Println(ebr.Get())
-
-	l_name := "sec logic"
-	abs_index4 = a.Partition_disk(1000,&io,l_name,utiles.B,utiles.Logic,utiles.Best)
-	fmt.Printf("Logic partition \"%s\" at %d\n",l_name,abs_index4)
-	ebr = types.CreateExtendedBootRecord(&io,abs_index4)
-	fmt.Println(ebr.Get())
-
-	l_name = "3 logic"
-	abs_index4 = a.Partition_disk(1000,&io,l_name,utiles.B,utiles.Logic,utiles.Best)
-	fmt.Printf("Logic partition \"%s\" at %d\n",l_name,abs_index4)
-	ebr = types.CreateExtendedBootRecord(&io,abs_index4)
-	fmt.Println(ebr.Get())
-
-	fmt.Println("Try to modify 3 logic space ")
-	algo:=a.Modify_partition_size_in_disk(-200,&io,l_name,utiles.B)
-	fmt.Println(algo)
-	result,ext_part:=a.Get_extended_partition(mbr)
-	if !result{panic("There was no extended partition")}
-	result,ebr = a.Find_logical_partition_by_name(ext_part,utiles.Into_ArrayChar16(l_name))
-	if !result{panic("There was no logical partition found")}
-	fmt.Println(ebr.Get())
-
-	fmt.Println("Try to modify extended space ")
-	algo = a.Modify_partition_size_in_disk(-200,&io,"third extd",utiles.B)
-	fmt.Println(algo)
-	fmt.Println(ext_part.Get())
-	sm:=a.Get_disk_partitions_space_manager(mbr)
-	sm.Log_chunks_state()
-	sm=a.Get_extended_part_space_manager(ext_part)
-	sm.Log_chunks_state()
-	io.Flush()
-	// mbr := types.CreateMasterBootRecord(&io,0)
-}
-func recover_and_erase_file_EXT2(){
-	io := datamanagment.IOService_from(aplication.DISK_CONTAINER_PATH+"/A.dsk")
-
-	f:=ext2.Recover_FormatEXT2(&io,0,utiles.First)
-	fmt.Println("Initizal state")
-	f.Log_block_bitmap()
-	f.Log_inode_bitmap()
-	inode_index,inode := f.First_Inode()
-	fmt.Print("Inode index = ")
-	fmt.Println(inode_index)
-	f.Log_block_bitmap()
-	f.Log_inode_bitmap()
-	fmt.Println("Searching for home directory")
-	searched_indx,home_dir_content := f.Search_for_inode(inode,utiles.Into_ArrayChar12("home"))
-	home_dir := types.CreateIndexNode(&io,home_dir_content.B_inodo().Get())
-	f.Log_block_bitmap()
-	f.Log_inode_bitmap()
-	fmt.Printf("Is searched dir found succsesfully: %t\n",(searched_indx != -1))
-	if searched_indx == -1{panic("Aborting test")}
-	fmt.Println("Searching for nested dir user")
-	searched_nested_indx,user_dir_content := f.Search_for_inode(home_dir,utiles.Into_ArrayChar12("user"))
-	user_dir := types.CreateIndexNode(&io,user_dir_content.B_inodo().Get())
-	fmt.Printf("Is searched \"user\" dir found succsesfully : %t\n",searched_nested_indx!=-1)
-	if searched_nested_indx == -1{panic("Aborting test")}
-	f.Log_block_bitmap()
-	f.Log_inode_bitmap()
-	fmt.Println("Reading file usuarios.txt in user dir")
-	file_inode_index,file_inode := f.Extract_inode(user_dir,utiles.Into_ArrayChar12("usuarios.txt"))
+	
 	
 
-	fmt.Printf("Is file \"usuarios.txt\" extracted succsesfully : %t\n",file_inode_index!=-1)
-	if file_inode_index == -1{panic("Aborting test")}
-	f.Log_block_bitmap()
-	f.Log_inode_bitmap()
-	fmt.Println("Reading file")
-	content:=f.Read_file(&file_inode)
-	fmt.Printf("(%s) ... (%s)\n",content[:2],content[len(content)-2:])
+}
+func execute(input string,app *aplication.Aplication, ioservice_pool *datamanagment.IOServicePool,disk_path string,parser *participle.Parser[parser.INI]) {
 	
-	fmt.Println("Erasing file content, including blocks")
-	f.Update_file(&file_inode,0,[]string{})
-	f.Log_block_bitmap()
-	f.Log_inode_bitmap()
-}
-func recover_and_test_dir_and_file_EXT2(){
-	io := datamanagment.IOService_from(aplication.DISK_CONTAINER_PATH+"/A.dsk")
-
-	f:=ext2.Recover_FormatEXT2(&io,0,utiles.First)
-	fmt.Println("Initizal state")
-	f.Log_block_bitmap()
-	f.Log_inode_bitmap()
-	inode_index,inode := f.First_Inode()
-	fmt.Print("Inode index = ")
-	fmt.Println(inode_index)
-	f.Log_block_bitmap()
-	f.Log_inode_bitmap()
-	fmt.Println("Searching for home directory")
-	searched_indx,home_dir_content := f.Search_for_inode(inode,utiles.Into_ArrayChar12("home"))
-	home_dir := types.CreateIndexNode(&io,home_dir_content.B_inodo().Get())
-	f.Log_block_bitmap()
-	f.Log_inode_bitmap()
-	fmt.Printf("Is searched dir found succsesfully: %t\n",(searched_indx != -1))
-	if searched_indx == -1{panic("Aborting test")}
-	fmt.Println("Searching for nested dir user")
-	searched_nested_indx,user_dir_content := f.Search_for_inode(home_dir,utiles.Into_ArrayChar12("user"))
-	fmt.Printf("Is searched \"user\" dir found succsesfully : %t\n",searched_nested_indx!=-1)
-	user_dir := types.CreateIndexNode(&io,user_dir_content.B_inodo().Get())
-	if searched_nested_indx == -1{panic("Aborting test")}
-	f.Log_block_bitmap()
-	f.Log_inode_bitmap()
-	fmt.Println("Reading file usuarios.txt in user dir")
-	file_inode_index,file_inode_content := f.Search_for_inode(user_dir,utiles.Into_ArrayChar12("usuarios.txt"))
-	fmt.Printf("Is searched \"usuarios.txt\" file found succsesfully : %t\n",file_inode_index!=-1)
-	file_inode := types.CreateIndexNode(&io,file_inode_content.B_inodo().Get())
-
-	if file_inode_index == -1{panic("Aborting test")}
-	f.Log_block_bitmap()
-	f.Log_inode_bitmap()
-	fmt.Println("Reading file")
-	content:=f.Read_file(&file_inode)
-	fmt.Printf("(%s) ... (%s)\n",content[:2],content[len(content)-2:])
-}
-func format_and_test_dir_and_file_EXT2(){
-	io := datamanagment.IOService_from(aplication.DISK_CONTAINER_PATH+"/A.dsk")
-
-	f:=ext2.Format_new_FormatEXT2_and_extract(&io,utiles.First,0,1*int32(utiles.Mb))
-	fmt.Println("Initizal state")
-	f.Log_block_bitmap()
-	f.Log_inode_bitmap()
-	inode_index,inode := f.Create_Inode(types.IndexNodeHolder{
-		I_uid:   0,
-		I_gid:   0,
-		I_s:     0,
-		I_atime: utiles.Current_Time(), // change latter
-		I_ctime: utiles.Current_Time(),
-		I_mtime: utiles.Current_Time(), // change latter
-		I_block: [16]int32{-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-		I_type:  string(utiles.Directory),
-		I_perm:  [3]string{"a","a","a"}, // change latter
-	})
-	fmt.Print("Inode index = ")
-	fmt.Println(inode_index)
-	fmt.Println("Inode Created")
-	f.Log_block_bitmap()
-	f.Log_inode_bitmap()
-	fmt.Println("Creating two directorys in root")
-	f.Put_in_dir(inode,types.IndexNodeHolder{
-		I_uid:   0,
-		I_gid:   0,
-		I_s:     0,
-		I_atime: utiles.Current_Time(),
-		I_ctime: utiles.Current_Time(),
-		I_mtime: utiles.Current_Time(),
-		I_block: [16]int32{-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-		I_type:  string(utiles.Directory),
-		I_perm:  [3]string{"a","a","a"}, // change latter
-	},utiles.Into_ArrayChar12("dev"))
-	f.Log_block_bitmap()
-	f.Log_inode_bitmap()
-	created_indx,_ := f.Put_in_dir(inode,types.IndexNodeHolder{
-		I_uid:   0,
-		I_gid:   0,
-		I_s:     0,
-		I_atime: utiles.Current_Time(),
-		I_ctime: utiles.Current_Time(),
-		I_mtime: utiles.Current_Time(),
-		I_block: [16]int32{-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-		I_type:  string(utiles.Directory),
-		I_perm:  [3]string{"a","a","a"}, // change latter
-	},utiles.Into_ArrayChar12("home"))
-	f.Log_block_bitmap()
-	f.Log_inode_bitmap()
-	fmt.Println("Searching for home directory")
-	searched_indx,home_dir_content := f.Search_for_inode(inode,utiles.Into_ArrayChar12("home"))
-	home_dir := types.CreateIndexNode(&io,home_dir_content.B_inodo().Get())
-	f.Log_block_bitmap()
-	f.Log_inode_bitmap()
-	fmt.Printf("Comparing both: searched and created: %t\n",created_indx==searched_indx)
-	fmt.Println("Appending nested directory")
-	nested_indx,_ := f.Put_in_dir(home_dir,types.IndexNodeHolder{
-		I_uid:   0,
-		I_gid:   0,
-		I_s:     0,
-		I_atime: utiles.Current_Time(),
-		I_ctime: utiles.Current_Time(),
-		I_mtime: utiles.Current_Time(),
-		I_block: [16]int32{-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-		I_type:  string(utiles.Directory),
-		I_perm:  [3]string{"a","a","a"}, // change latter
-		},utiles.Into_ArrayChar12("user"))
-	fmt.Println("Searching and comparing created and searched nested dir")
-	searched_nested_indx,user_dir_content := f.Search_for_inode(home_dir,utiles.Into_ArrayChar12("user"))
-	user_dir := types.CreateIndexNode(&io,user_dir_content.B_inodo().Get())
-	fmt.Printf("Result is : %t\n",searched_nested_indx==nested_indx)
-	f.Log_block_bitmap()
-	f.Log_inode_bitmap()
-	fmt.Println("Writing file usuarios.txt in user dir")
-	
-	_,file := f.Put_in_dir(user_dir,types.IndexNodeHolder{
-		I_uid:   0,
-		I_gid:   0,
-		I_s:     0,
-		I_atime: utiles.Current_Time(),
-		I_ctime: utiles.Current_Time(),
-		I_mtime: utiles.Current_Time(),
-		I_block: [16]int32{-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-		I_type:  string(utiles.File),
-		I_perm:  [3]string{"a","a","a"}, // change latter
-	},utiles.Into_ArrayChar12("usuarios.txt"))
-	f.Log_block_bitmap()
-	f.Log_inode_bitmap()
-	fmt.Println("Updating file")
-	const size = 64*13 + 64*16 + 64*16*16 + 64*16*16*16
-	data := make([]string,size)
-	data[0] = "+"
-	for i := 1; i < size-1; i++ {
-		data[i] = "."
+	parsing, err := parser.ParseString("", input)
+	if err != nil {
+		panic(fmt.Sprintf("Error al parsear: %v\n", err))
 	}
-	data[size-1] = "+"
-	f.Update_file(&file,0,data)
-	f.Log_block_bitmap()
-	f.Log_inode_bitmap()
-	
-	// f.Log_block_bitmap()
-	// f.Log_inode_bitmap()
-	// fmt.Println("Reading file just created")
-	// content:=f.Read_file(&inode)
+	for _, task := range parsing.Tasks {
+		switch strings.ToLower(task.Command) {
+		case "mkdisk":
+			params,err:=task.Get_MkdiskParam()
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+			_,_,err = app.Make_disk(params.Size,params.Unit,params.Fit,disk_path)
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+		case "rmdisk":
+			params,err:=task.Get_RmdiskParam()
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+			done := app.Remove_disk(params.Driverletter,disk_path)
+			if !done{
+				Err.Printf("Command \"%s\" failed in execution:\n",task.Command)
+				continue
+			}
+		case "fdisk":
+			params,err:=task.Get_FdiskParam()
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+			io,err := ioservice_pool.Get_service_with(params.Driverletter)
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+			if params.Delete{
+				
+			}else if params.Add != 0{
+				err = app.Modify_partition_size_in_disk(params.Size,io,params.Name,params.Unit)
 
-	// fmt.Printf("(%s) ... (%s)\n",content[:2],content[len(content)-2:])
-	// // for _,ch := range f.Read_file(&inode){
-	// // 	fmt.Print(ch)
-	// // }
-	// // fmt.Println()
-	io.Flush()
-}
-func format_and_write_file_EXT2(){
-	io := datamanagment.IOService_from(aplication.DISK_CONTAINER_PATH+"/A.dsk")
-	f:=ext2.Format_new_FormatEXT2_and_extract(&io,utiles.First,0,1*int32(utiles.Mb))
-	fmt.Println("Initizal state")
-	f.Log_block_bitmap()
-	f.Log_inode_bitmap()
-	file_inode := types.IndexNodeHolder{
-		I_uid:   0,
-		I_gid:   0,
-		I_s:     0,
-		I_atime: utiles.Current_Time(), // change latter
-		I_ctime: utiles.Current_Time(),
-		I_mtime: utiles.Current_Time(), // change latter
-		I_block: [16]int32{-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
-		I_type:  string(utiles.File),
-		I_perm:  [3]string{"a","a","a"}, // change latter
-	}
-	inode_index,inode := f.Create_Inode(file_inode)
-	fmt.Print("Inode index = ")
-	fmt.Println(inode_index)
-	fmt.Println("Inode Created")
-	f.Log_block_bitmap()
-	f.Log_inode_bitmap()
-	fmt.Println("Updating file")
-	const size = 64*13 + 64*16 + 64*16*16 + 64*16*16*16
-	data := make([]string,size)
-	data[0] = "+"
-	for i := 1; i < size-1; i++ {
-		data[i] = "."
-	}
-	data[size-1] = "+"
-	f.Update_file(&inode,0,data)
-	f.Log_block_bitmap()
-	f.Log_inode_bitmap()
-	fmt.Println("Reading file just created")
-	content:=f.Read_file(&inode)
+			}else{	
+				_,edrr := app.Partition_disk(params.Size,io,params.Name,params.Unit,params.Type,params.Fit)
+				err = edrr
+			}
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+		case "mount":
+			params,err:=task.Get_MountParam()
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+			io,err := ioservice_pool.Get_service_with(params.Driverletter)
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}			
+			app.Mount_partition(io,params.Name,params.Driverletter)
+		case "unmount":
+			params,err:=task.Get_UnmountParam()
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+			app.Unmount_partition(params.Id)
+		case "mkfs":
+			params,err:=task.Get_MkfsParam()
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+			err = app.Format_mounted_partition(params.Id,params.Type,params.Fs)
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+// -----------------------------------------------------------------------
+		case "login":
+			params,err:=task.Get_LoginParam()
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+			err = app.Log_in_user(params.Id,params.User,params.Pass)
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+		case "logout":
+			app.Log_out()
+		case "mkgrp":
+			params,err:=task.Get_MkgrpParam()
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+			err = app.Make_group(params.Name)
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+		case "rmgrp":
+			params,err:=task.Get_RmgrpParam()
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+			err = app.Remove_group(params.Name)
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+		case "mkusr":
+			params,err:=task.Get_MkusrParam()
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+			err = app.Make_user(params.User,params.Pass,params.Grp)
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+		case "rmusr":
+			params,err:=task.Get_RmusrParam()
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+			err = app.Remove_user(params.User)
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+// -----------------------------------------------------------------------
+		case "mkfile":
+			params,err:=task.Get_MkfileParam()
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+			var content []string
 
-	fmt.Printf("(%s) ... (%s)\n",content[:2],content[len(content)-2:])
-	// for _,ch := range f.Read_file(&inode){
-	// 	fmt.Print(ch)
-	// }
-	// fmt.Println()
-	io.Flush()
+			if params.Cont != ""{
+				b, err := os.ReadFile(params.Cont)
+				if err != nil {
+					Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+					continue
+				}
+				content = make([]string, 0,len(b))
+				for i := 0; i < len(b); i++ {
+					content = append(content, string(b[i]))
+				}
+
+			}else if params.Size != 0 {
+				content = make([]string, 0,params.Size)
+				for i := 0; i < int(params.Size); i++ {
+					content = append(content, strconv.Itoa(rand.Intn(10)))
+				}
+			}else{
+				Err.Printf("Command failed in execution:\nThere is no content for file")
+				continue
+			}
+			dirs:=strings.Split(params.Path, "/")[1:]
+			file_name:=utiles.Into_ArrayChar12(dirs[len(dirs) - 1])
+			dirs = dirs[:len(dirs) - 1]
+			folders:= make([][12]string,0,len(dirs))
+			for i := 0; i < len(dirs); i++ {
+				folders = append(folders, utiles.Into_ArrayChar12(dirs[i]))
+			}
+			err = app.Make_file(folders,content,file_name,params.R)
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+		case "cat":
+			params,err:=task.Get_CatParam()
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+			for i := 0; i < len(params.Paths); i++ {
+				dirs:=strings.Split(params.Paths[i], "/")[1:]
+				file_name:=utiles.Into_ArrayChar12(dirs[len(dirs) - 1])
+				dirs = dirs[:len(dirs) - 1]
+				folders:= make([][12]string,0,len(dirs))
+				for i := 0; i < len(dirs); i++ {
+					folders = append(folders, utiles.Into_ArrayChar12(dirs[i]))
+				}
+				content,err := app.Show_file(folders,file_name)
+				if err!=nil{
+					Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+					continue
+				}
+				Result.Println(content)
+				Result.Println()
+
+			}
+		case "remove":
+			params,err:=task.Get_RemoveParam()
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+			dirs:=strings.Split(params.Path, "/")[1:]
+			file_name:=utiles.Into_ArrayChar12(dirs[len(dirs) - 1])
+			dirs = dirs[:len(dirs) - 1]
+			folders:= make([][12]string,0,len(dirs))
+			for i := 0; i < len(dirs); i++ {
+				folders = append(folders, utiles.Into_ArrayChar12(dirs[i]))
+			}
+			err = app.Remove(folders,file_name)
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+		case "edit":
+			params,err:=task.Get_EditParam()
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+			var content []string
+			if params.Cont != ""{
+				b, err := os.ReadFile(params.Cont)
+				if err != nil {
+					Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+					continue
+				}
+				content = make([]string, 0,len(b))
+				for i := 0; i < len(b); i++ {
+					content = append(content, string(b[i]))
+				}
+
+			}else{
+				Err.Printf("Command \"%s\" failed in execution:\nThere is no content for file",task.Command)
+				continue
+			}
+			dirs:=strings.Split(params.Path, "/")[1:]
+			file_name:=utiles.Into_ArrayChar12(dirs[len(dirs) - 1])
+			dirs = dirs[:len(dirs) - 1]
+			folders:= make([][12]string,0,len(dirs))
+			for i := 0; i < len(dirs); i++ {
+				folders = append(folders, utiles.Into_ArrayChar12(dirs[i]))
+			}
+			err = app.Edit_file(folders,content,file_name)
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+		case "rename":
+			params,err:=task.Get_RenameParam()
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+			
+			dirs:=strings.Split(params.Path, "/")[1:]
+			file_name:=utiles.Into_ArrayChar12(dirs[len(dirs) - 1])
+			dirs = dirs[:len(dirs) - 1]
+			folders:= make([][12]string,0,len(dirs))
+			for i := 0; i < len(dirs); i++ {
+				folders = append(folders, utiles.Into_ArrayChar12(dirs[i]))
+			}
+			err = app.Rename_inode(folders,file_name,utiles.Into_ArrayChar12(params.Name))
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+		case "mkdir":
+			params,err:=task.Get_MkdirParam()
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+			
+			dirs:=strings.Split(params.Path, "/")[1:]
+			file_name:=utiles.Into_ArrayChar12(dirs[len(dirs) - 1])
+			dirs = dirs[:len(dirs) - 1]
+			folders:= make([][12]string,0,len(dirs))
+			for i := 0; i < len(dirs); i++ {
+				folders = append(folders, utiles.Into_ArrayChar12(dirs[i]))
+			}
+			err = app.Make_dir(folders,file_name,params.R)
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+		case "copy":
+			params,err:=task.Get_CopyParam()
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+			
+			dirs:=strings.Split(params.Path, "/")[1:]
+			file_name:=utiles.Into_ArrayChar12(dirs[len(dirs) - 1])
+			dirs = dirs[:len(dirs) - 1]
+			folders:= make([][12]string,0,len(dirs))
+			for i := 0; i < len(dirs); i++ {
+				folders = append(folders, utiles.Into_ArrayChar12(dirs[i]))
+			}
+			dirs2:=strings.Split(params.Destino, "/")[1:]
+			folders2:= make([][12]string,0,len(dirs2))
+			for i := 0; i < len(dirs2); i++ {
+				folders2 = append(folders2, utiles.Into_ArrayChar12(dirs2[i]))
+			}
+			err = app.Copy(folders,file_name,folders2)
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+		case "move":
+			params,err:=task.Get_MoveParam()
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+			
+			dirs:=strings.Split(params.Path, "/")[1:]
+			file_name:=utiles.Into_ArrayChar12(dirs[len(dirs) - 1])
+			dirs = dirs[:len(dirs) - 1]
+			folders:= make([][12]string,0,len(dirs))
+			for i := 0; i < len(dirs); i++ {
+				folders = append(folders, utiles.Into_ArrayChar12(dirs[i]))
+			}
+			dirs2:=strings.Split(params.Destino, "/")[1:]
+			folders2:= make([][12]string,0,len(dirs2))
+			for i := 0; i < len(dirs2); i++ {
+				folders2 = append(folders2, utiles.Into_ArrayChar12(dirs2[i]))
+			}
+			err = app.Move(folders,file_name,folders2)
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+		case "find": // REQUIERE IMPLEMENTATION
+			params,err:=task.Get_FindParam()
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+			var folders [][12]string
+			if params.Path == "/"{
+				folders= make([][12]string,0,0)
+			}else{
+				dirs := strings.Split(params.Path, "/")[1:]
+				folders= make([][12]string,0,len(dirs))
+				for i := 0; i < len(dirs); i++ {
+					folders = append(folders, utiles.Into_ArrayChar12(dirs[i]))
+				}
+			}
+			SPACE_CHAR:=utiles.New_Char(" ")
+			criteria_chars:=[12]utiles.Char{SPACE_CHAR,SPACE_CHAR,SPACE_CHAR,SPACE_CHAR,SPACE_CHAR,SPACE_CHAR,SPACE_CHAR,SPACE_CHAR,SPACE_CHAR,SPACE_CHAR,SPACE_CHAR,SPACE_CHAR}
+			chars:=strings.Split(params.Name,"")
+			for i := 0; i < len(chars) && i < 12; i++ {
+				if chars[i] == "?"{
+					criteria_chars[i] = utiles.ANY_CHAR
+				}else if chars[i] == "*"{
+					for j := i; j < 12; j++ {
+						criteria_chars[j] = utiles.ANY_CHAR
+					}
+					break
+				}else{
+					criteria_chars[i] = utiles.New_Char(chars[i])
+				}
+			}
+			criteria:=utiles.NameCriteria{
+				Chars: criteria_chars,
+			}
+			app.Find(folders,criteria)
+			// err = app.
+			// if err!=nil{
+			// 	Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+			// 	continue
+			// }
+		case "chown":
+			params,err:=task.Get_ChownParam()
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+			dirs:=strings.Split(params.Path, "/")[1:]
+			file_name:=utiles.Into_ArrayChar12(dirs[len(dirs) - 1])
+			dirs = dirs[:len(dirs) - 1]
+			folders:= make([][12]string,0,len(dirs))
+			for i := 0; i < len(dirs); i++ {
+				folders = append(folders, utiles.Into_ArrayChar12(dirs[i]))
+			}
+			err = app.Change_own(folders,file_name,params.User,params.R)
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+		case "chgrp":
+		params,err:=task.Get_ChgrpParam()
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+			err=app.Chagne_User_Group(params.User,params.Grp)
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+		case "chmod":
+		params,err:=task.Get_ChmodParam()
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+			dirs:=strings.Split(params.Path, "/")[1:]
+			file_name:=utiles.Into_ArrayChar12(dirs[len(dirs) - 1])
+			dirs = dirs[:len(dirs) - 1]
+			folders:= make([][12]string,0,len(dirs))
+			for i := 0; i < len(dirs); i++ {
+				folders = append(folders, utiles.Into_ArrayChar12(dirs[i]))
+			}
+			err = app.Chagne_UGO(folders,file_name,params.Ugo,params.R)
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+		case "pause":
+			var nothing string
+			fmt.Scanln(&nothing)
+		case "recovery":// REQUIERE IMPLEMENTATION
+			var nothing string
+			fmt.Scanln(&nothing)
+		case "loss":// REQUIERE IMPLEMENTATION
+			var nothing string
+			fmt.Scanln(&nothing)
+		case "execute":
+			params,err:=task.Get_ExecuteParam()
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+			
+			b, err := os.ReadFile(params.Path)
+			if err != nil {
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+			instructions := string(b)
+			execute(instructions,app,ioservice_pool,disk_path,parser)
+		case "mountid":
+			app.Print_mounted()
+		case "rep":// REQUIERE IMPLEMENTATION
+			params,err:=task.Get_RepParam()
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+			file, err :=os.Create(params.Path)
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+			var dot_str string
+			switch params.Name {
+			case "mbr":
+				ioservice,err:=ioservice_pool.Get_service_with(params.Id)
+				if err!=nil{
+					Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+					file.Close()
+					continue
+				}
+				dot_str, err = app.Mbr_repo(ioservice)
+				if err!=nil{
+					Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+					file.Close()
+					continue
+				}
+
+			case "disk":
+				ioservice,err:=ioservice_pool.Get_service_with(params.Id)
+				if err!=nil{
+					Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+					file.Close()
+					continue
+				}
+				dot_str,err=app.Disk_repos(ioservice)
+				if err!=nil{
+					Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+					file.Close()
+					continue
+				}
+			case "inode":
+				dot_str,err=app.Inode_repos(params.Id)
+				if err!=nil{
+					Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+					file.Close()
+					continue
+				}
+			case "block":
+				dot_str,err=app.Block_repos(params.Id)
+				if err!=nil{
+					Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+					file.Close()
+					continue
+				}
+			case "bm_inode":
+				dot_str,err=app.Inode_bitmap_repos(params.Id)
+				if err!=nil{
+					Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+					file.Close()
+					continue
+				}
+			case "bm_block":
+				dot_str,err=app.Block_bitmap_repos(params.Id)
+				if err!=nil{
+					Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+					file.Close()
+					continue
+				}
+			case "tree":
+				dot_str,err=app.Tree_repos(params.Id)
+				if err!=nil{
+					Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+					file.Close()
+					continue
+				}
+			case "sb":
+			case "file":
+			case "ls":
+			case "journaling":
+			}
+			file.Write([]byte(dot_str))
+			file.Close()
+		default: 
+			Err.Println("Command not recognized")
+			continue
+		}
+		Ok.Printf("Comando \"%s\" ejecutado con exito\n",task.Command)
+		// ioservice_pool.Flush_changes()
+	}
 }
+
+
 func bestfit(){
 	sm := datamanagment.SpaceManager_from_free_spaces([]datamanagment.Space{
 		datamanagment.New_Space(0,3),datamanagment.New_Space(5,2),datamanagment.New_Space(10,10) },20)
@@ -373,7 +613,7 @@ func bestfit(){
 	fmt.Println("-----------------------------------------------")
 	fmt.Println("Simulating simetric case with occuped spaces")
 	fmt.Println("-----------------------------------------------")
-	sm = datamanagment.SpaceManager_from_occuped_spaces([]datamanagment.Space{
+	sm,_ = datamanagment.SpaceManager_from_occuped_spaces([]datamanagment.Space{
 		datamanagment.New_Space(3,2),datamanagment.New_Space(7,3),
 	},20)
 	sm.Log_chunks_state()

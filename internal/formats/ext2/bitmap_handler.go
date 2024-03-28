@@ -13,6 +13,7 @@ type Bitmap struct{
 	free_transformer types.Integer
 	free int32
 }
+func (self *Bitmap) Get_SpaceManager()datamanagment.SpaceManager{return self.space_manager}
 func New_Bitmap(super_service *datamanagment.IOService,index int32,length int32,free types.Integer) Bitmap{
 	return Bitmap{
 		super_service:    super_service,
@@ -81,10 +82,12 @@ func (self *Bitmap) First_fit(for_length int32) int32{
 	self.set_in_bitmap(for_length,bit_no,1)
 	return bit_no
 }
-func (self *Bitmap) Erase(for_length int32, at_bit_no int32){
-	if self.space_manager.Free_space(for_length,at_bit_no){
+func (self *Bitmap) Erase(for_length int32, at_bit_no int32)error{
+	err:=self.space_manager.Free_space(for_length,at_bit_no)
+	if err==nil{
 		self.set_in_bitmap(for_length,at_bit_no,0)
 	}
+	return nil
 }
 
 func (self *Bitmap) set_in_bitmap(amount int32, at_bit_no int32, data byte){
