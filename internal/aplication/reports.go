@@ -3,7 +3,7 @@ package aplication
 import (
 	"fmt"
 	"project/internal/datamanagment"
-	"project/internal/formats/ext2"
+	"project/internal/formats"
 	"project/internal/types"
 	"project/internal/utiles"
 	"sort"
@@ -215,7 +215,7 @@ func (self *Aplication) Inode_repos(part_id string)(string,error){
 			fit,err = utiles.Translate_fit(partition.Part_fit().Get())
 			if err!=nil{return "",err}
 		}
-		format := ext2.Recover_FormatEXT2(io_service,super_block_start,fit)
+		format := formats.Recover_Format(io_service,super_block_start,fit)
 		format.Init_bitmap_mapping()
 		spaceman:=format.Inodes_bitmap.Get_SpaceManager()
 		spaceman,err=datamanagment.SpaceManager_from_occuped_spaces(spaceman.Free_spaces(),spaceman.Get_length())
@@ -232,7 +232,7 @@ func (self *Aplication) Inode_repos(part_id string)(string,error){
 		}
 		return fmt.Sprintf("graph{%s}",builder),nil
 	}
-	return "",fmt.Errorf("There's no partition with this id")
+	return "",fmt.Errorf("there's no partition with this id")
 }
 
 
@@ -244,7 +244,7 @@ func (self *Aplication) Inode_repos(part_id string)(string,error){
 type BlockRepoBuilder struct{
 	acumulator string
 	dot_block_counter int
-	format *ext2.FormatEXT2
+	format *formats.Format
 }
 func(self *BlockRepoBuilder) IoService()*datamanagment.IOService{
 	return self.format.Super_block.Super_service
@@ -289,8 +289,8 @@ func Recursive_block_repo(root_inode *types.IndexNode,inode_type utiles.InodeTyp
 				for _,cont:=range dir_block.B_content().Get(){
 					if cont.B_inodo == -1{continue}
 					another_inode:=types.CreateIndexNode(builder.IoService(),cont.B_inodo)
-					if cont.B_name == ext2.OWN_DIR_NAME {continue}
-					if cont.B_name == ext2.PARENT_DIR_NAME {continue}
+					if cont.B_name == formats.OWN_DIR_NAME {continue}
+					if cont.B_name == formats.PARENT_DIR_NAME {continue}
 					switch another_inode.I_type().Get(){
 					case string(utiles.Directory):
 						Recursive_block_repo(&another_inode,utiles.Directory,builder)
@@ -338,8 +338,8 @@ func recursive_block_repo_in_pointer(pointer_block *types.PointerBlock, level in
 				another_inode:=types.CreateIndexNode(builder.IoService(),cont.B_inodo)
 				switch another_inode.I_type().Get(){
 				case string(utiles.Directory):
-					if cont.B_name == ext2.OWN_DIR_NAME {continue}
-					if cont.B_name == ext2.PARENT_DIR_NAME {continue}
+					if cont.B_name == formats.OWN_DIR_NAME {continue}
+					if cont.B_name == formats.PARENT_DIR_NAME {continue}
 					Recursive_block_repo(&another_inode,utiles.Directory,builder)
 				case string(utiles.File):
 					Recursive_block_repo(&another_inode,utiles.File,builder)
@@ -379,7 +379,7 @@ func (self *Aplication) Block_repos(part_id string)(string,error){
 			fit,err = utiles.Translate_fit(partition.Part_fit().Get())
 			if err!=nil{return "",err}
 		}
-		format := ext2.Recover_FormatEXT2(io_service,super_block_start,fit)
+		format := formats.Recover_Format(io_service,super_block_start,fit)
 		format.Init_bitmap_mapping()
 		root_inode:=format.First_Inode()
 		builder:=BlockRepoBuilder{
@@ -391,7 +391,7 @@ func (self *Aplication) Block_repos(part_id string)(string,error){
 		Recursive_block_repo(&root_inode,utiles.Directory,&builder)
 		return builder.Build(),nil
 	}
-	return "",fmt.Errorf("There's no partition with this id")
+	return "",fmt.Errorf("there's no partition with this id")
 }
 
 
@@ -418,7 +418,7 @@ func (self *Aplication) Inode_bitmap_repos(part_id string)(string,error){
 			fit,err = utiles.Translate_fit(partition.Part_fit().Get())
 			if err!=nil{return "",err}
 		}
-		format := ext2.Recover_FormatEXT2(io_service,super_block_start,fit)
+		format := formats.Recover_Format(io_service,super_block_start,fit)
 		format.Init_bitmap_mapping()
 		space_man:=format.Inodes_bitmap.Get_SpaceManager()
 		bitmap:=make([]byte,0,1024)
@@ -443,7 +443,7 @@ func (self *Aplication) Inode_bitmap_repos(part_id string)(string,error){
 		}
 		return string(bitmap),nil
 	}
-	return "",fmt.Errorf("There's no partition with this id")
+	return "",fmt.Errorf("there's no partition with this id")
 }
 func (self *Aplication) Block_bitmap_repos(part_id string)(string,error){
 	for i := 0; i < len(self.mounted_partitions); i++ {
@@ -468,7 +468,7 @@ func (self *Aplication) Block_bitmap_repos(part_id string)(string,error){
 			fit,err = utiles.Translate_fit(partition.Part_fit().Get())
 			if err!=nil{return "",err}
 		}
-		format := ext2.Recover_FormatEXT2(io_service,super_block_start,fit)
+		format := formats.Recover_Format(io_service,super_block_start,fit)
 		format.Init_bitmap_mapping()
 		space_man:=format.Block_bitmap.Get_SpaceManager()
 		bitmap:=make([]byte,0,1024)
@@ -493,7 +493,7 @@ func (self *Aplication) Block_bitmap_repos(part_id string)(string,error){
 		}
 		return string(bitmap),nil
 	}
-	return "",fmt.Errorf("There's no partition with this id")
+	return "",fmt.Errorf("there's no partition with this id")
 }
 
 
@@ -506,7 +506,7 @@ type TreeRepoBuilder struct{
 	nodes string
 	connections string
 	nodes_counter int
-	format *ext2.FormatEXT2
+	format *formats.Format
 }
 func(self *TreeRepoBuilder) IoService()*datamanagment.IOService{
 	return self.format.Super_block.Super_service
@@ -685,7 +685,7 @@ func (self *Aplication) Tree_repos(part_id string)(string,error){
 			fit,err = utiles.Translate_fit(partition.Part_fit().Get())
 			if err!=nil{return "",err}
 		}
-		format := ext2.Recover_FormatEXT2(io_service,super_block_start,fit)
+		format := formats.Recover_Format(io_service,super_block_start,fit)
 		format.Init_bitmap_mapping()
 		root_inode:=format.First_Inode()
 		builder:=TreeRepoBuilder{
@@ -699,7 +699,7 @@ func (self *Aplication) Tree_repos(part_id string)(string,error){
 		builder.Collect_Inode_node(&ibuilder)
 		return builder.Build(),nil
 	}
-	return "",fmt.Errorf("There's no partition with this id")
+	return "",fmt.Errorf("there's no partition with this id")
 }
 
 func normalize(name [12]string)string{
@@ -759,8 +759,8 @@ func Recursive_tree_repo(root_inode *types.IndexNode,inode_bldr *InodeNodeBuilde
 					name:=normalize(cont.B_name)
 					dir_bldr.Push_row(i,name,cont.B_inodo)
 					if cont.B_inodo == -1{continue}
-					if cont.B_name == ext2.OWN_DIR_NAME {continue}
-					if cont.B_name == ext2.PARENT_DIR_NAME {continue}
+					if cont.B_name == formats.OWN_DIR_NAME {continue}
+					if cont.B_name == formats.PARENT_DIR_NAME {continue}
 
 					another_inode:=types.CreateIndexNode(builder.IoService(),cont.B_inodo)
 					another_inode_bldr:=builder.New_Inode_node(name,another_inode)
@@ -815,8 +815,8 @@ func recursive_tree_repo_in_pointer(pointer_block *types.PointerBlock, level int
 				name:=normalize(cont.B_name)
 				dir_block_builder.Push_row(i,name,cont.B_inodo)
 				if cont.B_inodo == -1{continue}
-				if cont.B_name == ext2.OWN_DIR_NAME {continue}
-				if cont.B_name == ext2.PARENT_DIR_NAME {continue}
+				if cont.B_name == formats.OWN_DIR_NAME {continue}
+				if cont.B_name == formats.PARENT_DIR_NAME {continue}
 				another_inode:=types.CreateIndexNode(builder.IoService(),cont.B_inodo)
 				another_inode_bldr:=builder.New_Inode_node(name,another_inode)
 				dir_block_builder.Connect(i,another_inode_bldr.id)
@@ -835,3 +835,200 @@ func recursive_tree_repo_in_pointer(pointer_block *types.PointerBlock, level int
 		}
 	}
 }
+
+
+
+
+
+
+
+
+
+
+
+func (self *Aplication)Journaling(part_id string)(string,error){
+	for i := 0; i < len(self.mounted_partitions); i++ {
+		if (self.mounted_partitions[i]).id != part_id{continue}
+		mounted := &self.mounted_partitions[i]
+		io_service:=mounted.io
+		var super_block_start int32
+		var err error
+		var fit utiles.FitCriteria
+		switch mounted.part_type {
+		case utiles.Logic:
+			logic := types.CreateExtendedBootRecord(io_service,mounted.index)
+			super_block_start = logic.Part_start().Get()
+			fit,err = utiles.Translate_fit(logic.Part_fit().Get())
+			if err!=nil{return "",err}
+			
+		case utiles.Primary:
+			partition := types.CreatePartition(io_service,mounted.index)
+			super_block_start = partition.Part_start().Get()
+			
+			fit,err = utiles.Translate_fit(partition.Part_fit().Get())
+			if err!=nil{return "",err}
+		}
+		format := formats.Recover_Format(io_service,super_block_start,fit)
+		if !format.Has_journaling() {return "",fmt.Errorf("cant generate report for non ext3 formated partition")}
+		rep := fmt.Sprintf(`digraph G {rankdir=LR;subgraph cluster_0 {
+			label="Journaling";node[shape=none];
+				node3[label=<<TABLE  CELLSPACING="0" BORDER="0" CELLBORDER = "1" >
+				<TR><TD>Commands</TD><TD>Args</TD><TD>Date</TD></TR>
+				%s
+				</TABLE>>];}}
+				`,format.Get_dot_journal_rep())
+		
+		return rep,nil
+	}
+	return "",fmt.Errorf("there's no partition with this id")
+}
+
+
+
+
+
+
+
+
+
+func (self *Aplication) Super_block_repo(part_id string)(string,error){
+	for i := 0; i < len(self.mounted_partitions); i++ {
+		if (self.mounted_partitions[i]).id != part_id{continue}
+		mounted := &self.mounted_partitions[i]
+		io_service:=mounted.io
+		var super_block_start int32
+		switch mounted.part_type {
+		case utiles.Logic:
+			logic := types.CreateExtendedBootRecord(io_service,mounted.index)
+			super_block_start = logic.Part_start().Get()
+			
+		case utiles.Primary:
+			partition := types.CreatePartition(io_service,mounted.index)
+			super_block_start = partition.Part_start().Get()
+		}
+		sb:=types.CreateSuperBlock(io_service,super_block_start)
+		return fmt.Sprintf(`digraph G {subgraph cluster_0 {node1[style=filled,color=white,label=<%s>];}}`,sb.Dot_label()),nil
+	}
+	return "",fmt.Errorf("there's no partition with this id")
+}
+
+
+
+
+
+func (self *Aplication) Ls_report(part_id string,folders_trgt [][12]string) (string,error) {
+	current_time := utiles.Current_Time()
+	for i := 0; i < len(self.mounted_partitions); i++ {
+		if (self.mounted_partitions[i]).id != part_id{continue}
+		mounted := &self.mounted_partitions[i]
+		io_service:=mounted.io
+		var super_block_start int32
+		var err error
+		var fit utiles.FitCriteria
+		switch mounted.part_type {
+		case utiles.Logic:
+			logic := types.CreateExtendedBootRecord(io_service,mounted.index)
+			super_block_start = logic.Part_start().Get()
+			fit,err = utiles.Translate_fit(logic.Part_fit().Get())
+			if err!=nil{return "",err}
+			
+		case utiles.Primary:
+			partition := types.CreatePartition(io_service,mounted.index)
+			super_block_start = partition.Part_start().Get()
+			
+			fit,err = utiles.Translate_fit(partition.Part_fit().Get())
+			if err!=nil{return "",err}
+		}
+		format := formats.Recover_Format(io_service,super_block_start,fit)
+		session,err:=parse_into_session_manager(&format)
+		if err!=nil{return "",err}
+		root:=format.First_Inode()
+		succes,trgt_dir := format.Get_nested_dir(root,folders_trgt,false,1,1,current_time,false,false)
+		if !succes {return "",fmt.Errorf("dir not found")}
+		date_str_conv:= func(date types.TimeHolder)string{
+			return fmt.Sprintf("%d/%d/%d %d:%d",date.Day,date.Month,date.Year,date.Hour,date.Minute)
+		}
+		ugo_str_conv:= func(str [3]string)string{
+			ugo:=utiles.UGOPermision_from_str(str)
+			return ugo.Canonical_repr()
+		}
+		to_plain_name := func (str [12]string)string{
+			final:=""
+			for _, c := range str {final += c}
+			return strings.TrimSpace(final)
+		}
+		var recursive_call func(types.Content)string
+		recursive_call = func (content types.Content)string{
+			inode:=types.CreateIndexNode(content.Super_service,content.B_inodo().Get())
+			name:= to_plain_name(content.B_name().Get())
+			rows:=""
+			permision_repr:=ugo_str_conv(inode.I_perm().Get())
+			usr,err:=session.Get_User_by_id(int(inode.I_uid().Get()))
+			if err != nil {panic("no user with that id")}
+			owner_repr:=usr.name
+			group_repr:=usr.group
+			creation_date_repr:=date_str_conv(inode.I_ctime().Get())
+			access_date_repr:=date_str_conv(inode.I_atime().Get())
+			modified_date_repr:=date_str_conv(inode.I_mtime().Get())
+			var type_repr string
+			inode_type:=inode.I_type().Get()
+			switch inode_type{
+			case string(utiles.Directory):
+				type_repr = "Directory"
+			case string(utiles.File):
+				type_repr = "File"
+			}
+			rows += fmt.Sprintf(`<TR><TD>%s</TD><TD>%s</TD><TD>%s</TD><TD>%d</TD><TD>%s</TD><TD>%s</TD><TD>%s</TD><TD>%s</TD><TD>%s</TD></TR>`,
+			permision_repr,owner_repr,group_repr,inode.I_s().Get(),creation_date_repr,modified_date_repr,access_date_repr,type_repr,name)
+			if inode_type ==string(utiles.Directory){
+				all_childs:=format.Get_strict_shallow_tree_of_childs(inode)
+				for _, child := range all_childs {
+					row := recursive_call(child)
+					rows += row
+				}
+			}
+			return rows
+		}
+		all_childs:=format.Get_strict_shallow_tree_of_childs(trgt_dir)
+		rows:=""
+		for _, child := range all_childs {
+			rows += recursive_call(child)
+		}
+		
+		return fmt.Sprintf(`digraph G {subgraph cluster_0 {node2 [shape=none,label=<<TABLE ><TR><TD>PERMISION</TD><TD>OWNER</TD>
+					  <TD>GROUP</TD><TD>SIZE</TD><TD>CREATION DATE</TD><TD>MOD DATE</TD>
+					  <TD>ACCES DATE</TD><TD>TYPE</TD><TD>NAME</TD></TR>%s</TABLE>>];}}`,rows),nil
+	}
+	return "",fmt.Errorf("there's no partition with this id")
+}
+
+
+// func (self *Aplication) File_repo(part_id string,file_path string)(string,error){
+// 	for i := 0; i < len(self.mounted_partitions); i++ {
+// 		if (self.mounted_partitions[i]).id != part_id{continue}
+// 		mounted := &self.mounted_partitions[i]
+// 		io_service:=mounted.io
+// 		var super_block_start int32
+// 		var err error
+// 		var fit utiles.FitCriteria
+// 		switch mounted.part_type {
+// 		case utiles.Logic:
+// 			logic := types.CreateExtendedBootRecord(io_service,mounted.index)
+// 			super_block_start = logic.Part_start().Get()
+// 			fit,err = utiles.Translate_fit(logic.Part_fit().Get())
+// 			if err!=nil{return "",err}
+			
+// 		case utiles.Primary:
+// 			partition := types.CreatePartition(io_service,mounted.index)
+// 			super_block_start = partition.Part_start().Get()
+			
+// 			fit,err = utiles.Translate_fit(partition.Part_fit().Get())
+// 			if err!=nil{return "",err}
+// 		}
+// 		format := formats.Recover_Format(io_service,super_block_start,fit)
+		
+// 		sb:=types.CreateSuperBlock(io_service,super_block_start)
+// 		return fmt.Sprintf(`digraph G {subgraph cluster_0 {node1[style=filled,color=white,label=<%s>];}}`,sb.Dot_label()),nil
+// 	}
+// 	return "",fmt.Errorf("there's no partition with this id")
+// }

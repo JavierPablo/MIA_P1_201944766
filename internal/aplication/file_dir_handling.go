@@ -4,7 +4,7 @@ import (
 	// "fmt"
 	"fmt"
 	"project/internal/datamanagment"
-	"project/internal/formats/ext2"
+	"project/internal/formats"
 	"project/internal/types"
 	"project/internal/utiles"
 	"strings"
@@ -32,26 +32,22 @@ func (self *Aplication) Recover_EXT2_Format(super_service *datamanagment.IOServi
 
 
 
-func (self *Aplication) Make_file(folders [][12]string, data []string, file_name [12]string, create_recursive bool) error {
-	if self.active_partition == nil {return fmt.Errorf("there's no active partition")}
+func (self *Aplication) Make_file(folders [][12]string, data []string, file_name [12]string, create_recursive bool) (*formats.JournalingManager,error) {
+	if self.active_partition == nil {return nil,fmt.Errorf("there's no active partition")}
 	super_service := self.active_partition.io
 	current_time := utiles.Current_Time()
-	// Result.Println("}}}}{{{{{{{{{{{{{}{}{}}}}}}}}}}}}}")
 	super_block_index,fit,err := self.Recover_EXT2_Format(super_service)
-	if err!=nil{return err}
-	format := ext2.Recover_FormatEXT2(super_service, super_block_index, fit)
+	if err!=nil{return nil,err}
+	format := formats.Recover_Format(super_service, super_block_index, fit)
 	format.Init_bitmap_mapping()
-	// Result.Println("]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]")
 
 	var dir types.IndexNode
 	dir = format.First_Inode()
 	user_corr:= int32(self.active_partition.session.active_user.correlative_number)
-	// Result.Println("??????????????????????????????????")
 
 	user_g_corr :=  int32(self.active_partition.session.Get_user_group(self.active_partition.session.active_user).correlative_number)
 	result,dir := format.Get_nested_dir(dir,folders,create_recursive,user_corr,user_g_corr,current_time,false,true)
-	if !result{return fmt.Errorf("There is no dir targeting that path")}
-	// Result.Println("///////////////////////////////")
+	if !result{return nil,fmt.Errorf("There is no dir targeting that path")}
 
 	file:=format.Put_in_dir(dir,format.Wrap_holder_in_template(types.IndexNodeHolder{
 		I_uid:   user_corr,
@@ -65,15 +61,13 @@ func (self *Aplication) Make_file(folders [][12]string, data []string, file_name
 		I_perm:  utiles.UGO_PERMITION_664.To_arr_string(),
 	}),file_name)
 	if file.Index == -1 {
-		return fmt.Errorf("Couldnt create new file")
 	}
-	// Result.Println("***************************")
-
+	// old_size:=file.I_s().Get()
 	format.Update_file(&file,0,data)
-	// Result.Println("++++++++++++++++++++++++++++++++")
+	format.Update_dir_and_ancestors_size(dir,int32(len(data)))
 
 	dir.I_mtime().Set(current_time)
-	return nil
+	return format.Get_journaling(),nil
 }
 
 func (self *Aplication) Show_file(folders [][12]string, file_name [12]string) (string,error) {
@@ -83,7 +77,7 @@ func (self *Aplication) Show_file(folders [][12]string, file_name [12]string) (s
 	super_service := self.active_partition.io
 	super_block_index,fit,err := self.Recover_EXT2_Format(super_service)
 	if err != nil {return "",err}
-	format := ext2.Recover_FormatEXT2(super_service, super_block_index, fit)
+	format := formats.Recover_Format(super_service, super_block_index, fit)
 	format.Init_bitmap_mapping()
 	current_time := utiles.Current_Time()
 	dir := format.First_Inode()
@@ -99,90 +93,93 @@ func (self *Aplication) Show_file(folders [][12]string, file_name [12]string) (s
 }
 
 
-func (self *Aplication) Remove(folders [][12]string, with_name [12]string) (error) {
-	if self.active_partition == nil {return fmt.Errorf("there's no active partition")}
+func (self *Aplication) Remove(folders [][12]string, with_name [12]string) (*formats.JournalingManager,error) {
+	if self.active_partition == nil {return nil,fmt.Errorf("there's no active partition")}
 	super_service := self.active_partition.io
 	super_block_index,fit,err := self.Recover_EXT2_Format(super_service)
-	if err != nil{return err}
-	format := ext2.Recover_FormatEXT2(super_service, super_block_index, fit)
+	if err != nil{return nil,err}
+	format := formats.Recover_Format(super_service, super_block_index, fit)
 	format.Init_bitmap_mapping()
 	current_time := utiles.Current_Time()
 	dir := format.First_Inode()
 	user_corr:= int32(self.active_partition.session.active_user.correlative_number)
 	user_g_corr :=  int32(self.active_partition.session.Get_user_group(self.active_partition.session.active_user).correlative_number)
 	result,dir := format.Get_nested_dir(dir,folders,false,user_corr,user_g_corr,current_time,true,false)
-	if !result {return fmt.Errorf("File dont found")}
+	if !result {return nil,fmt.Errorf("File dont found")}
 	remove_result := format.Remove_inode_if_possilbe(dir,with_name,user_corr,user_g_corr,current_time)
-	if !remove_result{return fmt.Errorf("Dir was not removed")}
-	return nil
+	if !remove_result{return nil,fmt.Errorf("Dir was not removed")}
+	return format.Get_journaling(),nil
 }
 
 
-func (self *Aplication) Edit_file(folders [][12]string, data []string, file_name [12]string) error {
-	if self.active_partition == nil {return fmt.Errorf("there's no active partition")}
+func (self *Aplication) Edit_file(folders [][12]string, data []string, file_name [12]string) (*formats.JournalingManager,error) {
+	if self.active_partition == nil {return nil,fmt.Errorf("there's no active partition")}
 	super_service := self.active_partition.io
 	current_time := utiles.Current_Time()
 	super_block_index,fit,err := self.Recover_EXT2_Format(super_service)
-	if err!=nil{return err}
-	format := ext2.Recover_FormatEXT2(super_service, super_block_index, fit)
+	if err!=nil{return nil,err}
+	format := formats.Recover_Format(super_service, super_block_index, fit)
 	format.Init_bitmap_mapping()
 	dir := format.First_Inode()
 	user_corr:= int32(self.active_partition.session.active_user.correlative_number)
 	user_g_corr :=  int32(self.active_partition.session.Get_user_group(self.active_partition.session.active_user).correlative_number)
 	result,dir := format.Get_nested_dir(dir,folders,false,user_corr,user_g_corr,current_time,true,true)
-	if !result{return fmt.Errorf("")}
+	if !result{return nil,fmt.Errorf("")}
 	file_result,content:=format.Search_for_inode(dir,file_name)
 	if file_result == -1 {
-		return fmt.Errorf("File not found")
+		return nil,fmt.Errorf("File not found")
 	}
 	file:=types.CreateIndexNode(content.Super_service,content.B_inodo().Get())
+	old_size:=file.I_s().Get()
 	format.Update_file(&file,0,data)
 	dir.I_mtime().Set(current_time)
-	return nil
+	format.Update_dir_and_ancestors_size(dir,int32(len(data))-old_size)
+
+	return format.Get_journaling(),nil
 }
 
-func (self *Aplication)Rename_inode(folders [][12]string, trgt_name [12]string,new_name [12]string) error {
-	if self.active_partition == nil {return fmt.Errorf("there's no active partition")}
+func (self *Aplication)Rename_inode(folders [][12]string, trgt_name [12]string,new_name [12]string) (*formats.JournalingManager,error) {
+	if self.active_partition == nil {return nil,fmt.Errorf("there's no active partition")}
 	super_service := self.active_partition.io
 	current_time := utiles.Current_Time()
 	super_block_index,fit,err := self.Recover_EXT2_Format(super_service)
-	if err!=nil{return err}
-	format := ext2.Recover_FormatEXT2(super_service, super_block_index, fit)
+	if err!=nil{return nil,err}
+	format := formats.Recover_Format(super_service, super_block_index, fit)
 	format.Init_bitmap_mapping()
 	dir := format.First_Inode()
 	user_corr:= int32(self.active_partition.session.active_user.correlative_number)
 	user_g_corr :=  int32(self.active_partition.session.Get_user_group(self.active_partition.session.active_user).correlative_number)
 	result,dir := format.Get_nested_dir(dir,folders,false,user_corr,user_g_corr,current_time,false,true)
-	if !result{return fmt.Errorf("Parent dir not found")}
+	if !result{return nil,fmt.Errorf("Parent dir not found")}
 	file_result,content:=format.Search_for_inode(dir,trgt_name)
 	if file_result == -1 {
-		return fmt.Errorf("File with that name doesnt exist")
+		return nil,fmt.Errorf("File with that name doesnt exist")
 	}
 	file_result2,_:=format.Search_for_inode(dir,new_name)
 	if file_result2 != -1 {
-		return fmt.Errorf("File with that name already exists")
+		return nil,fmt.Errorf("File with that name already exists")
 	}
 	content.B_name().Set(new_name)
 	dir.I_mtime().Set(current_time)
-	return nil
+	return format.Get_journaling(),nil
 }
 
 
 
-func (self *Aplication) Make_dir(folders [][12]string, dir_name [12]string, create_recursive bool) error {
-	if self.active_partition == nil {return fmt.Errorf("there's no active partition")}
+func (self *Aplication) Make_dir(folders [][12]string, dir_name [12]string, create_recursive bool) (*formats.JournalingManager,error) {
+	if self.active_partition == nil {return nil,fmt.Errorf("there's no active partition")}
 	super_service := self.active_partition.io
 	current_time := utiles.Current_Time()
 	super_block_index,fit,err := self.Recover_EXT2_Format(super_service)
-	if err!=nil{return err}
-	format := ext2.Recover_FormatEXT2(super_service, super_block_index, fit)
+	if err!=nil{return nil,err}
+	format := formats.Recover_Format(super_service, super_block_index, fit)
 	format.Init_bitmap_mapping()
 	var dir types.IndexNode
 	dir = format.First_Inode()
 	user_corr:= int32(self.active_partition.session.active_user.correlative_number)
 	user_g_corr :=  int32(self.active_partition.session.Get_user_group(self.active_partition.session.active_user).correlative_number)
 	result,dir := format.Get_nested_dir(dir,folders,create_recursive,user_corr,user_g_corr,current_time,false,true)
-	if !result{return fmt.Errorf("Parent dir not found")}
+	if !result{return nil,fmt.Errorf("Parent dir not found")}
 
 	dir_appended:=format.Put_in_dir(dir,format.Wrap_holder_in_template(types.IndexNodeHolder{
 		I_uid:   user_corr,
@@ -196,11 +193,11 @@ func (self *Aplication) Make_dir(folders [][12]string, dir_name [12]string, crea
 		I_perm:  utiles.UGO_PERMITION_664.To_arr_string(),
 	}),dir_name)
 	if dir_appended.Index == -1 {
-		return fmt.Errorf("Dir coulndt be created")
+		return nil,fmt.Errorf("Dir coulndt be created")
 	}
 	format.Set_parent_child_relation(dir,dir_appended)
 	dir.I_mtime().Set(current_time)
-	return nil
+	return format.Get_journaling(),nil
 }
 
 
@@ -217,13 +214,13 @@ func (self *Aplication) Make_dir(folders [][12]string, dir_name [12]string, crea
 
 
 
-func (self *Aplication) Copy(folders_trgt [][12]string, for_name [12]string, folders_dest [][12]string) error {
-	if self.active_partition == nil {return fmt.Errorf("there's no active partition")}
+func (self *Aplication) Copy(folders_trgt [][12]string, for_name [12]string, folders_dest [][12]string) (*formats.JournalingManager,error) {
+	if self.active_partition == nil {return nil,fmt.Errorf("there's no active partition")}
 	super_service := self.active_partition.io
 	current_time := utiles.Current_Time()
 	super_block_index,fit,err := self.Recover_EXT2_Format(super_service)
-	if err!=nil{return err}
-	format := ext2.Recover_FormatEXT2(super_service, super_block_index, fit)
+	if err!=nil{return nil,err}
+	format := formats.Recover_Format(super_service, super_block_index, fit)
 	format.Init_bitmap_mapping()
 	var dir types.IndexNode
 	dir = format.First_Inode()
@@ -231,43 +228,52 @@ func (self *Aplication) Copy(folders_trgt [][12]string, for_name [12]string, fol
 	user_g_corr :=  int32(self.active_partition.session.Get_user_group(self.active_partition.session.active_user).correlative_number)
 	
 	result,srcs_dir := format.Get_nested_dir(dir,folders_trgt,false,user_corr,user_g_corr,current_time,true,false)
-	if !result {return fmt.Errorf("")}
+	if !result {return nil,fmt.Errorf("")}
 	search_r,trgt_dir_content := format.Search_for_inode(srcs_dir,for_name)
-	if search_r == -1 {return fmt.Errorf("")}
+	if search_r == -1 {return nil,fmt.Errorf("")}
 	trgt_dir:=types.CreateIndexNode(trgt_dir_content.Super_service,trgt_dir_content.B_inodo().Get())
 
 	result,dest_dir := format.Get_nested_dir(dir,folders_dest,false,user_corr,user_g_corr,current_time,false,true)
-	if !result{return fmt.Errorf("")}
+	if !result{return nil,fmt.Errorf("")}
 	res:=format.Directory_deep_copy(dest_dir,trgt_dir,for_name,user_corr,user_g_corr,current_time)
-	if res{return nil}
-	return fmt.Errorf("No se pudo realizar la copia")
+	format.Update_dir_and_ancestors_size(dest_dir,trgt_dir.I_s().Get())
+	if res{return format.Get_journaling(),nil}
+	return nil,fmt.Errorf("No se pudo realizar la copia")
 }
 
 
-func (self *Aplication) Move(folders_trgt [][12]string, for_name [12]string, folders_dest [][12]string) error {
-	if self.active_partition == nil {return fmt.Errorf("there's no active partition")}
+func (self *Aplication) Move(folders_trgt [][12]string, for_name [12]string, folders_dest [][12]string) (*formats.JournalingManager,error) {
+	if self.active_partition == nil {return nil,fmt.Errorf("there's no active partition")}
 	super_service := self.active_partition.io
 	current_time := utiles.Current_Time()
 	super_block_index,fit,err := self.Recover_EXT2_Format(super_service)
-	if err!=nil{return nil}
-	format := ext2.Recover_FormatEXT2(super_service, super_block_index, fit)
+	if err!=nil{return nil,err}
+	format := formats.Recover_Format(super_service, super_block_index, fit)
 	format.Init_bitmap_mapping()
 	var dir types.IndexNode
 	dir = format.First_Inode()
 	user_corr:= int32(self.active_partition.session.active_user.correlative_number)
 	user_g_corr :=  int32(self.active_partition.session.Get_user_group(self.active_partition.session.active_user).correlative_number)
 	result,srcs_dir := format.Get_nested_dir(dir,folders_trgt,false,user_corr,user_g_corr,current_time,true,false)
-	if !result {return fmt.Errorf("")}
+	if !result {return nil,fmt.Errorf("")}
 	search_r,_ := format.Extract_inode(srcs_dir,for_name)
-	if search_r == -1 {return fmt.Errorf("")}
+	if search_r == -1 {return nil,fmt.Errorf("")}
 	result,dest_dir := format.Get_nested_dir(dir,folders_dest,false,user_corr,user_g_corr,current_time,false,true)
-	if !result{return fmt.Errorf("")}
+	if !result{return nil,fmt.Errorf("")}
 	appended:= format.Put_in_dir(dest_dir,format.Wrap_indx_in_template(search_r),for_name) 
-	if appended.Index !=-1{return nil}
-	if appended.I_type().Get() == string(utiles.Directory){
-		format.Set_parent_child_relation(dest_dir,appended)
+	if appended.Index !=-1{
+		if appended.I_type().Get() == string(utiles.Directory){
+			format.Set_parent_child_relation(dest_dir,appended)
+		}
+		indoe_size:=appended.I_s().Get()
+		if indoe_size != 0{
+			format.Update_dir_and_ancestors_size(srcs_dir,-indoe_size)
+			format.Update_dir_and_ancestors_size(dest_dir,indoe_size)
+		}
+
+		return format.Get_journaling(),nil
 	}
-	return fmt.Errorf("")
+	return nil,fmt.Errorf("no se puedo mover el fichero")
 }
 
 
@@ -304,7 +310,7 @@ func (self *Aplication) Find(folders_trgt [][12]string, name_criteria utiles.Nam
 	current_time := utiles.Current_Time()
 	super_block_index,fit,err := self.Recover_EXT2_Format(super_service)
 	if err!=nil{return err}
-	format := ext2.Recover_FormatEXT2(super_service, super_block_index, fit)
+	format := formats.Recover_Format(super_service, super_block_index, fit)
 	format.Init_bitmap_mapping()
 	var dir = format.First_Inode()
 	user_corr:= int32(self.active_partition.session.active_user.correlative_number)
@@ -355,54 +361,58 @@ func (self *Aplication) Find(folders_trgt [][12]string, name_criteria utiles.Nam
 
 
 
-func (self *Aplication) Change_own(folders_trgt [][12]string, for_name [12]string, user string,recursive bool) error {
-	if self.active_partition == nil {return fmt.Errorf("there's no active partition")}
+func (self *Aplication) Change_own(folders_trgt [][12]string, for_name [12]string, user string,recursive bool) (*formats.JournalingManager,error) {
+	if self.active_partition == nil {return nil,fmt.Errorf("there's no active partition")}
 	super_service := self.active_partition.io
 	current_time := utiles.Current_Time()
 	super_block_index,fit,err := self.Recover_EXT2_Format(super_service)
-	if err!=nil{return err}
-	format := ext2.Recover_FormatEXT2(super_service, super_block_index, fit)
+	if err!=nil{return nil,err}
+	format := formats.Recover_Format(super_service, super_block_index, fit)
 	// format.Init_bitmap_mapping()
 	var dir = format.First_Inode()
 	user_corr:= int32(self.active_partition.session.active_user.correlative_number)
 	user_g_corr :=  int32(self.active_partition.session.Get_user_group(self.active_partition.session.active_user).correlative_number)
 	result,srcs_dir := format.Get_nested_dir(dir,folders_trgt,false,user_corr,user_g_corr,current_time,true,false)
-	if !result {return fmt.Errorf("")}
+	if !result {return nil,fmt.Errorf("")}
 	search_r,trgt_inode_content := format.Search_for_inode(srcs_dir,for_name)
-	if search_r == -1 {return fmt.Errorf("")}
+	if search_r == -1 {return nil,fmt.Errorf("")}
 	trgt_inode:=types.CreateIndexNode(trgt_inode_content.Super_service,trgt_inode_content.B_inodo().Get())
 
 	new_user,err:=self.active_partition.session.Get_User(user)
-	if err!= nil {return err}
+	if err!= nil {return nil,err}
 	new_user_corr:= int32(new_user.correlative_number)
 	new_user_g_corr :=  int32(self.active_partition.session.Get_user_group(new_user).correlative_number)
 	changed:=format.Change_owner(trgt_inode,user_corr,user_g_corr,current_time,new_user_corr,new_user_g_corr,recursive)
-	if changed != 0 {return nil}
-	return fmt.Errorf("No se han realizado cambios")
+	if changed != 0 {
+		return format.Get_journaling(),nil
+	}
+	return nil,fmt.Errorf("No se han realizado cambios")
 }
 
 
-func (self *Aplication) Chagne_UGO(folders_trgt [][12]string, for_name [12]string, perm string,recursive bool)error{
-	if self.active_partition == nil {return fmt.Errorf("there's no active partition")}
+func (self *Aplication) Chagne_UGO(folders_trgt [][12]string, for_name [12]string, perm string,recursive bool)(*formats.JournalingManager,error){
+	if self.active_partition == nil {return nil,fmt.Errorf("there's no active partition")}
 	super_service := self.active_partition.io
 	current_time := utiles.Current_Time()
 	super_block_index,fit,err := self.Recover_EXT2_Format(super_service)
-	if err!=nil{return err}
-	format := ext2.Recover_FormatEXT2(super_service, super_block_index, fit)
+	if err!=nil{return nil,err}
+	format := formats.Recover_Format(super_service, super_block_index, fit)
 	// format.Init_bitmap_mapping()
 	var dir = format.First_Inode()
 	user_corr:= int32(self.active_partition.session.active_user.correlative_number)
 	user_g_corr :=  int32(self.active_partition.session.Get_user_group(self.active_partition.session.active_user).correlative_number)
 	result,srcs_dir := format.Get_nested_dir(dir,folders_trgt,false,user_corr,user_g_corr,current_time,true,false)
-	if !result {return fmt.Errorf("")}
+	if !result {return nil,fmt.Errorf("")}
 	search_r,trgt_inode_content := format.Search_for_inode(srcs_dir,for_name)
-	if search_r == -1 {return fmt.Errorf("")}
+	if search_r == -1 {return nil,fmt.Errorf("")}
 	trgt_inode:=types.CreateIndexNode(trgt_inode_content.Super_service,trgt_inode_content.B_inodo().Get())
 	ugo,err:=utiles.Parse_to_ugo(perm)
-	if err!= nil {return err}
+	if err!= nil {return nil,err}
 	new_perm := ugo.To_arr_string()
 	changed:=format.Change_ugo_permition(trgt_inode,current_time,recursive,new_perm)
-	if changed != 0 {return nil}
-	return fmt.Errorf("No se han realizado cambios")
+	if changed != 0 {
+		return format.Get_journaling(),nil
+	}
+	return nil,fmt.Errorf("No se han realizado cambios")
 
 }

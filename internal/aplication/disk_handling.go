@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 	"project/internal/datamanagment"
-	"project/internal/formats/ext2"
+	"project/internal/formats"
 	"project/internal/types"
 	"project/internal/utiles"
 	"strconv"
@@ -460,7 +460,12 @@ func (self *Aplication) Format_mounted_partition(id string, p_type bool, format 
 				super_block_start := logic.Part_start().Get()
 				fit,err:=utiles.Translate_fit(logic.Part_fit().Get())
 				if err!=nil{return err}
-				ext2.Format_new_fresh_FormatEXT2(io_service,fit,super_block_start,logic.Part_s().Get())	
+				switch format {
+				case utiles.Ext2:
+					formats.Format_new_fresh_FormatEXT2(io_service,fit,super_block_start,logic.Part_s().Get())	
+				case utiles.Ext3:
+					formats.Format_new_fresh_FormatEXT3(io_service,fit,super_block_start,logic.Part_s().Get())	
+				}
 
 			case utiles.Primary:
 				partition := types.CreatePartition(io_service,mounted.index)
@@ -468,8 +473,12 @@ func (self *Aplication) Format_mounted_partition(id string, p_type bool, format 
 				
 				fit,err:=utiles.Translate_fit(partition.Part_fit().Get())
 				if err!=nil{return err}
-				ext2.Format_new_fresh_FormatEXT2(io_service,fit,super_block_start,partition.Part_s().Get())				
-
+				switch format {
+				case utiles.Ext2:
+					formats.Format_new_fresh_FormatEXT2(io_service,fit,super_block_start,partition.Part_s().Get())				
+				case utiles.Ext3:
+					formats.Format_new_fresh_FormatEXT3(io_service,fit,super_block_start,partition.Part_s().Get())				
+				}
 			}
 			return nil
 		}

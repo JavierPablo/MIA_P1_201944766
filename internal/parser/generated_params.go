@@ -481,10 +481,11 @@ func (self *Task) Get_RmusrParam() (RmusrParam, error) {
 }
 
 type MkfileParam struct {
-	Path string
-	R    bool
-	Size int32
-	Cont string
+	Path      string
+	R         bool
+	Size      int32
+	Cont      string
+	Fixedcont string
 }
 
 func (self *Task) Get_MkfileParam() (MkfileParam, error) {
@@ -540,11 +541,23 @@ func (self *Task) Get_MkfileParam() (MkfileParam, error) {
 
 	}
 
+	var res4 string
+	var err4 error
+	param4, err4 := self.get_value("fixedcont")
+	if err4 != nil {
+		res4 = ""
+	} else {
+
+		res4 = param4
+
+	}
+
 	return MkfileParam{
-		Path: res0,
-		R:    res1,
-		Size: res2,
-		Cont: res3,
+		Path:      res0,
+		R:         res1,
+		Size:      res2,
+		Cont:      res3,
+		Fixedcont: res4,
 	}, nil
 
 }
@@ -571,8 +584,9 @@ func (self *Task) Get_RemoveParam() (RemoveParam, error) {
 }
 
 type EditParam struct {
-	Path string
-	Cont string
+	Path      string
+	Cont      string
+	Fixedcont string
 }
 
 func (self *Task) Get_EditParam() (EditParam, error) {
@@ -595,9 +609,21 @@ func (self *Task) Get_EditParam() (EditParam, error) {
 
 	res1 = param1
 
+	var res2 string
+	var err2 error
+	param2, err2 := self.get_value("fixedcont")
+	if err2 != nil {
+		res2 = ""
+	} else {
+
+		res2 = param2
+
+	}
+
 	return EditParam{
-		Path: res0,
-		Cont: res1,
+		Path:      res0,
+		Cont:      res1,
+		Fixedcont: res2,
 	}, nil
 
 }

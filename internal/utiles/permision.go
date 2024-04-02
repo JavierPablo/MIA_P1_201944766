@@ -21,6 +21,10 @@ type UGOPermision struct{
 	Group Permision
 	Other Permision
 }
+
+func (self *UGOPermision) Canonical_repr()string{
+	return self.User.Plain_repr() + self.Group.Plain_repr() + self.Other.Plain_repr()
+}
 func (self *UGOPermision) To_arr_string()[3]string{
 	return [3]string{self.User.To_string(),self.Group.To_string(),self.Other.To_string()}
 }
@@ -57,6 +61,13 @@ type Permision struct{
 	read int
 	write int
 	execute int
+}
+func (self *Permision) Plain_repr()string{
+	str:=""	
+	if self.read == 1 {str += "r"}else{str+="-"}
+	if self.write == 1 {str += "w"}else{str+="-"}
+	if self.execute == 1 {str += "e"}else{str+="-"}
+	return str
 }
 func (self *Permision) Can_read()bool{
 	return self.read == 1

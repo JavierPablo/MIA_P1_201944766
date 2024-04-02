@@ -3,7 +3,7 @@ package aplication
 import (
 	"fmt"
 	"project/internal/datamanagment"
-	"project/internal/formats/ext2"
+	"project/internal/formats"
 	"project/internal/types"
 	"project/internal/utiles"
 	"strconv"
@@ -60,7 +60,7 @@ type MountedPartition struct{
 	has_session bool
 	session SessionManager
 }
-func (self *MountedPartition) Write_session_to_root_file(io_service *datamanagment.IOService)(error){
+func (self *MountedPartition) Write_session_to_root_file(io_service *datamanagment.IOService)(*formats.JournalingManager,error){
 	var err error
 	var abs_index int32
 	var fit utiles.FitCriteria
@@ -69,23 +69,25 @@ func (self *MountedPartition) Write_session_to_root_file(io_service *datamanagme
 		ebr := types.CreateExtendedBootRecord(io_service,self.index)
 		abs_index = ebr.Part_start().Get()
 		fit, err = utiles.Translate_fit(ebr.Part_fit().Get())
-		if err != nil {return err}
+		if err != nil {return nil,err}
 	case utiles.Primary:
 		partition := types.CreatePartition(io_service,self.index)
 		abs_index = partition.Part_start().Get()
 		fit,err = utiles.Translate_fit(partition.Part_fit().Get())
-		if err != nil {return err}
+		if err != nil {return nil,err}
 	}
-	format := ext2.Recover_FormatEXT2(io_service,abs_index,fit)
+	format := formats.Recover_Format(io_service,abs_index,fit)
 	format.Init_bitmap_mapping()
 	root_folder := format.First_Inode()
-	if root_folder.Index == -1 {return fmt.Errorf("There is no root directory for this partition")}
+	if root_folder.Index == -1 {return nil,fmt.Errorf("There is no root directory for this partition")}
 	indx,content :=format.Search_for_inode(root_folder,utiles.Into_ArrayChar12("users.txt"))
-	if indx == -1 {return fmt.Errorf("There is no users.txt file for this partition")}
+	if indx == -1 {return nil,fmt.Errorf("There is no users.txt file for this partition")}
 	file:=types.CreateIndexNode(content.Super_service,content.B_inodo().Get())
 	session:=self.session.To_file()
+	old_size:=file.I_s().Get()
 	format.Update_file(&file,0,session)
-	return nil
+	format.Update_dir_and_ancestors_size(root_folder,int32(len(session))-old_size)
+	return format.Get_journaling(),nil
 }
 
 type SessionManager struct{
@@ -97,11 +99,20 @@ type SessionManager struct{
 	insertion_order []Entity
 	
 }
+func (self *SessionManager) Get_User_by_id(id int)(*User,error){
+	for i := 0; i < len(self.users); i++ {
+		if self.users[i].correlative_number == id{
+			return &self.users[i],nil
+		}
+	}
+	return nil,fmt.Errorf("Theres no user with that id")
+}
+
 func (self *SessionManager) Try_log_user(user string, pass string)error{
 	for n, u := range self.users {
 		if u.name == user {
 			if u.password != pass {
-				return fmt.Errorf("wrong password for user")
+				return fmt.Errorf("wrong password for user \"%s\"",pass)
 			}
 		}else{continue}
 		
@@ -217,7 +228,7 @@ func (self *SessionManager) Get_user_group(user *User)*Group{
 	return nil
 }
 
-func parse_into_session_manager(format *ext2.FormatEXT2)(SessionManager,error){
+func parse_into_session_manager(format *formats.Format)(SessionManager,error){
 	root_dir := format.First_Inode()
 	indx,content := format.Search_for_inode(root_dir,utiles.Into_ArrayChar12("users.txt"))
 	if indx == -1{

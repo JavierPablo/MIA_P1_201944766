@@ -7,6 +7,7 @@ import (
 	"os"
 	"project/internal/aplication"
 	"project/internal/datamanagment"
+	"project/internal/formats"
 	"project/internal/parser"
 	"project/internal/utiles"
 	"strconv"
@@ -19,6 +20,8 @@ var Ok = color.New(color.FgGreen)
 var Result = color.New(color.FgCyan)
 var Err = color.New(color.FgRed)
 func main(){
+	
+	
 	main_program()
 	// fmt.Println(string(utiles.File))
 	// parser.Some_test()
@@ -37,19 +40,24 @@ func main_program(){
 			Err.Println("Error reading input:", err)
 			return
 		}
-		execute(input,&app,&ioservice_pool,DISK_CONTAINER_PATH,parser)
+		execute(input,nil,&app,&ioservice_pool,DISK_CONTAINER_PATH,parser,true)
 	}
 	
 	
 
 }
-func execute(input string,app *aplication.Aplication, ioservice_pool *datamanagment.IOServicePool,disk_path string,parser *participle.Parser[parser.INI]) {
-	
-	parsing, err := parser.ParseString("", input)
-	if err != nil {
-		panic(fmt.Sprintf("Error al parsear: %v\n", err))
+func execute(input string,or_tasks *[]*parser.Task,app *aplication.Aplication, ioservice_pool *datamanagment.IOServicePool,disk_path string,parser_engine *participle.Parser[parser.INI],record_activity bool) {
+	var tasks []*parser.Task 
+	if or_tasks != nil{
+		tasks = *or_tasks
+	}else{
+		parsing, err := parser_engine.ParseString("", input)
+		if err != nil {
+			panic(fmt.Sprintf("Error al parsear: %v\n", err))
+		}
+		tasks=parsing.Tasks
 	}
-	for _, task := range parsing.Tasks {
+	for _, task := range tasks {
 		switch strings.ToLower(task.Command) {
 		case "mkdisk":
 			params,err:=task.Get_MkdiskParam()
@@ -134,23 +142,36 @@ func execute(input string,app *aplication.Aplication, ioservice_pool *datamanagm
 				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
 				continue
 			}
-			err = app.Log_in_user(params.Id,params.User,params.Pass)
+			journal,err := app.Log_in_user(params.Id,params.User,params.Pass)
 			if err!=nil{
 				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
 				continue
 			}
+			if journal!=nil && record_activity{
+				journal.Push_instruction(formats.New_inst(formats.Login,[]string{params.User,params.Pass}))
+			}
 		case "logout":
-			app.Log_out()
+			journal,err :=app.Log_out()
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+			if journal!=nil && record_activity{
+				journal.Push_instruction(formats.New_inst(formats.Unlog,[]string{}))
+			}
 		case "mkgrp":
 			params,err:=task.Get_MkgrpParam()
 			if err!=nil{
 				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
 				continue
 			}
-			err = app.Make_group(params.Name)
+			journal,err := app.Make_group(params.Name)
 			if err!=nil{
 				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
 				continue
+			}
+			if journal!=nil && record_activity{
+				journal.Push_instruction(formats.New_inst(formats.Make_group,[]string{params.Name}))
 			}
 		case "rmgrp":
 			params,err:=task.Get_RmgrpParam()
@@ -158,10 +179,13 @@ func execute(input string,app *aplication.Aplication, ioservice_pool *datamanagm
 				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
 				continue
 			}
-			err = app.Remove_group(params.Name)
+			journal,err := app.Remove_group(params.Name)
 			if err!=nil{
 				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
 				continue
+			}
+			if journal!=nil && record_activity{
+				journal.Push_instruction(formats.New_inst(formats.Remove_group,[]string{params.Name}))
 			}
 		case "mkusr":
 			params,err:=task.Get_MkusrParam()
@@ -169,10 +193,13 @@ func execute(input string,app *aplication.Aplication, ioservice_pool *datamanagm
 				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
 				continue
 			}
-			err = app.Make_user(params.User,params.Pass,params.Grp)
+			journal,err := app.Make_user(params.User,params.Pass,params.Grp)
 			if err!=nil{
 				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
 				continue
+			}
+			if journal!=nil && record_activity{
+				journal.Push_instruction(formats.New_inst(formats.Make_user,[]string{params.User,params.Pass,params.Grp}))
 			}
 		case "rmusr":
 			params,err:=task.Get_RmusrParam()
@@ -180,10 +207,13 @@ func execute(input string,app *aplication.Aplication, ioservice_pool *datamanagm
 				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
 				continue
 			}
-			err = app.Remove_user(params.User)
+			journal,err := app.Remove_user(params.User)
 			if err!=nil{
 				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
 				continue
+			}
+			if journal!=nil && record_activity{
+				journal.Push_instruction(formats.New_inst(formats.Remove_user,[]string{params.User}))
 			}
 // -----------------------------------------------------------------------
 		case "mkfile":
@@ -194,7 +224,9 @@ func execute(input string,app *aplication.Aplication, ioservice_pool *datamanagm
 			}
 			var content []string
 
-			if params.Cont != ""{
+			if params.Fixedcont != ""{
+				content = strings.Split(params.Fixedcont, "")
+			}else if params.Cont != ""{
 				b, err := os.ReadFile(params.Cont)
 				if err != nil {
 					Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
@@ -221,10 +253,17 @@ func execute(input string,app *aplication.Aplication, ioservice_pool *datamanagm
 			for i := 0; i < len(dirs); i++ {
 				folders = append(folders, utiles.Into_ArrayChar12(dirs[i]))
 			}
-			err = app.Make_file(folders,content,file_name,params.R)
+			journal,err := app.Make_file(folders,content,file_name,params.R)
 			if err!=nil{
 				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
 				continue
+			}
+			if journal!=nil && record_activity{
+				if params.R{
+					journal.Push_instruction(formats.New_inst(formats.Make_file,[]string{"Y",params.Path,strings.Join(content, "")}))
+				}else{
+					journal.Push_instruction(formats.New_inst(formats.Make_file,[]string{"N",params.Path,strings.Join(content, "")}))
+				}
 			}
 		case "cat":
 			params,err:=task.Get_CatParam()
@@ -262,10 +301,13 @@ func execute(input string,app *aplication.Aplication, ioservice_pool *datamanagm
 			for i := 0; i < len(dirs); i++ {
 				folders = append(folders, utiles.Into_ArrayChar12(dirs[i]))
 			}
-			err = app.Remove(folders,file_name)
+			journal,err := app.Remove(folders,file_name)
 			if err!=nil{
 				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
 				continue
+			}
+			if journal!=nil && record_activity{
+				journal.Push_instruction(formats.New_inst(formats.Remove,[]string{params.Path}))
 			}
 		case "edit":
 			params,err:=task.Get_EditParam()
@@ -274,7 +316,9 @@ func execute(input string,app *aplication.Aplication, ioservice_pool *datamanagm
 				continue
 			}
 			var content []string
-			if params.Cont != ""{
+			if params.Fixedcont != ""{
+				content = strings.Split(params.Fixedcont, "")
+			}else if params.Cont != ""{
 				b, err := os.ReadFile(params.Cont)
 				if err != nil {
 					Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
@@ -296,10 +340,13 @@ func execute(input string,app *aplication.Aplication, ioservice_pool *datamanagm
 			for i := 0; i < len(dirs); i++ {
 				folders = append(folders, utiles.Into_ArrayChar12(dirs[i]))
 			}
-			err = app.Edit_file(folders,content,file_name)
+			journal,err := app.Edit_file(folders,content,file_name)
 			if err!=nil{
 				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
 				continue
+			}
+			if journal!=nil && record_activity{
+				journal.Push_instruction(formats.New_inst(formats.Edit_file,[]string{params.Path, strings.Join(content, "")}))
 			}
 		case "rename":
 			params,err:=task.Get_RenameParam()
@@ -315,10 +362,13 @@ func execute(input string,app *aplication.Aplication, ioservice_pool *datamanagm
 			for i := 0; i < len(dirs); i++ {
 				folders = append(folders, utiles.Into_ArrayChar12(dirs[i]))
 			}
-			err = app.Rename_inode(folders,file_name,utiles.Into_ArrayChar12(params.Name))
+			journal,err := app.Rename_inode(folders,file_name,utiles.Into_ArrayChar12(params.Name))
 			if err!=nil{
 				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
 				continue
+			}
+			if journal!=nil && record_activity{
+				journal.Push_instruction(formats.New_inst(formats.Rename_inode,[]string{params.Path, params.Name}))
 			}
 		case "mkdir":
 			params,err:=task.Get_MkdirParam()
@@ -334,10 +384,17 @@ func execute(input string,app *aplication.Aplication, ioservice_pool *datamanagm
 			for i := 0; i < len(dirs); i++ {
 				folders = append(folders, utiles.Into_ArrayChar12(dirs[i]))
 			}
-			err = app.Make_dir(folders,file_name,params.R)
+			journal,err := app.Make_dir(folders,file_name,params.R)
 			if err!=nil{
 				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
 				continue
+			}
+			if journal!=nil && record_activity{
+				if params.R{
+					journal.Push_instruction(formats.New_inst(formats.Make_dir,[]string{"Y",params.Path}))
+				}else{
+					journal.Push_instruction(formats.New_inst(formats.Make_dir,[]string{"N",params.Path}))
+				}
 			}
 		case "copy":
 			params,err:=task.Get_CopyParam()
@@ -358,10 +415,13 @@ func execute(input string,app *aplication.Aplication, ioservice_pool *datamanagm
 			for i := 0; i < len(dirs2); i++ {
 				folders2 = append(folders2, utiles.Into_ArrayChar12(dirs2[i]))
 			}
-			err = app.Copy(folders,file_name,folders2)
+			journal,err := app.Copy(folders,file_name,folders2)
 			if err!=nil{
 				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
 				continue
+			}
+			if journal!=nil && record_activity{
+				journal.Push_instruction(formats.New_inst(formats.Copy,[]string{params.Path, params.Destino}))
 			}
 		case "move":
 			params,err:=task.Get_MoveParam()
@@ -382,12 +442,15 @@ func execute(input string,app *aplication.Aplication, ioservice_pool *datamanagm
 			for i := 0; i < len(dirs2); i++ {
 				folders2 = append(folders2, utiles.Into_ArrayChar12(dirs2[i]))
 			}
-			err = app.Move(folders,file_name,folders2)
+			journal,err := app.Move(folders,file_name,folders2)
 			if err!=nil{
 				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
 				continue
 			}
-		case "find": // REQUIERE IMPLEMENTATION
+			if journal!=nil && record_activity{
+				journal.Push_instruction(formats.New_inst(formats.Move,[]string{params.Path, params.Destino}))
+			}
+		case "find": 
 			params,err:=task.Get_FindParam()
 			if err!=nil{
 				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
@@ -422,11 +485,7 @@ func execute(input string,app *aplication.Aplication, ioservice_pool *datamanagm
 				Chars: criteria_chars,
 			}
 			app.Find(folders,criteria)
-			// err = app.
-			// if err!=nil{
-			// 	Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
-			// 	continue
-			// }
+
 		case "chown":
 			params,err:=task.Get_ChownParam()
 			if err!=nil{
@@ -440,10 +499,17 @@ func execute(input string,app *aplication.Aplication, ioservice_pool *datamanagm
 			for i := 0; i < len(dirs); i++ {
 				folders = append(folders, utiles.Into_ArrayChar12(dirs[i]))
 			}
-			err = app.Change_own(folders,file_name,params.User,params.R)
+			journal,err := app.Change_own(folders,file_name,params.User,params.R)
 			if err!=nil{
 				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
 				continue
+			}
+			if journal!=nil && record_activity{
+				if params.R{
+					journal.Push_instruction(formats.New_inst(formats.Chown,[]string{"Y",params.Path,params.User}))
+				}else{
+					journal.Push_instruction(formats.New_inst(formats.Chown,[]string{"N",params.Path,params.User}))
+				}
 			}
 		case "chgrp":
 		params,err:=task.Get_ChgrpParam()
@@ -451,10 +517,13 @@ func execute(input string,app *aplication.Aplication, ioservice_pool *datamanagm
 				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
 				continue
 			}
-			err=app.Chagne_User_Group(params.User,params.Grp)
+			journal,err:=app.Chagne_User_Group(params.User,params.Grp)
 			if err!=nil{
 				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
 				continue
+			}
+			if journal!=nil && record_activity{
+				journal.Push_instruction(formats.New_inst(formats.Chown,[]string{params.User,params.Grp}))
 			}
 		case "chmod":
 		params,err:=task.Get_ChmodParam()
@@ -469,20 +538,45 @@ func execute(input string,app *aplication.Aplication, ioservice_pool *datamanagm
 			for i := 0; i < len(dirs); i++ {
 				folders = append(folders, utiles.Into_ArrayChar12(dirs[i]))
 			}
-			err = app.Chagne_UGO(folders,file_name,params.Ugo,params.R)
+			journal,err := app.Chagne_UGO(folders,file_name,params.Ugo,params.R)
 			if err!=nil{
 				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
 				continue
 			}
+			if journal!=nil && record_activity{
+				if params.R{
+					journal.Push_instruction(formats.New_inst(formats.Chown,[]string{"Y",params.Path,params.Ugo}))
+				}else{
+					journal.Push_instruction(formats.New_inst(formats.Chown,[]string{"N",params.Path,params.Ugo}))
+				}
+			}
 		case "pause":
 			var nothing string
 			fmt.Scanln(&nothing)
-		case "recovery":// REQUIERE IMPLEMENTATION
-			var nothing string
-			fmt.Scanln(&nothing)
-		case "loss":// REQUIERE IMPLEMENTATION
-			var nothing string
-			fmt.Scanln(&nothing)
+		case "recovery":
+			params,err:=task.Get_RecoveryParam()
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+			new_tasks,err := app.Recovery_ext3(params.Id)
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+			execute("",&new_tasks,app,ioservice_pool,disk_path,parser_engine,false)
+		case "loss":
+			params,err:=task.Get_LossParam()
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+			err = app.Loss_ext3(params.Id)
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+			
 		case "execute":
 			params,err:=task.Get_ExecuteParam()
 			if err!=nil{
@@ -496,10 +590,10 @@ func execute(input string,app *aplication.Aplication, ioservice_pool *datamanagm
 				continue
 			}
 			instructions := string(b)
-			execute(instructions,app,ioservice_pool,disk_path,parser)
+			execute(instructions,nil,app,ioservice_pool,disk_path,parser_engine,true)
 		case "mountid":
 			app.Print_mounted()
-		case "rep":// REQUIERE IMPLEMENTATION
+		case "rep":
 			params,err:=task.Get_RepParam()
 			if err!=nil{
 				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
@@ -525,7 +619,6 @@ func execute(input string,app *aplication.Aplication, ioservice_pool *datamanagm
 					file.Close()
 					continue
 				}
-
 			case "disk":
 				ioservice,err:=ioservice_pool.Get_service_with(params.Id)
 				if err!=nil{
@@ -575,9 +668,62 @@ func execute(input string,app *aplication.Aplication, ioservice_pool *datamanagm
 					continue
 				}
 			case "sb":
+				dot_str,err=app.Super_block_repo(params.Id)
+				if err!=nil{
+					Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+					file.Close()
+					continue
+				}
 			case "file":
+				if params.Ruta == ""{
+					Err.Printf("Command \"%s\" failed in execution:\n Path vas not specified",task.Command)
+					file.Close()
+
+					continue
+				}
+				dirs:=strings.Split(params.Ruta, "/")[1:]
+				file_name:=utiles.Into_ArrayChar12(dirs[len(dirs) - 1])
+				dirs = dirs[:len(dirs) - 1]
+				folders:= make([][12]string,0,len(dirs))
+				for i := 0; i < len(dirs); i++ {
+					folders = append(folders, utiles.Into_ArrayChar12(dirs[i]))
+				}
+				content,err := app.Show_file(folders,file_name)
+				if err!=nil{
+					Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+					file.Close()
+					continue
+				}
+				dot_str = content
 			case "ls":
+				if params.Ruta == ""{
+					Err.Printf("Command \"%s\" failed in execution:\n Path vas not specified",task.Command)
+					file.Close()
+					continue
+				}
+				var folders [][12]string
+				if params.Ruta == "/"{
+					folders= make([][12]string,0,0)
+				}else{
+					dirs := strings.Split(params.Ruta, "/")[1:]
+					folders= make([][12]string,0,len(dirs))
+					for i := 0; i < len(dirs); i++ {
+						folders = append(folders, utiles.Into_ArrayChar12(dirs[i]))
+					}
+				}
+				dot_str,err = app.Ls_report(params.Id,folders)
+				if err!=nil{
+					Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+					file.Close()
+					continue
+				}
 			case "journaling":
+				dot_str,err=app.Journaling(params.Id)
+				if err!=nil{
+					Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+					file.Close()
+					continue
+				}
 			}
 			file.Write([]byte(dot_str))
 			file.Close()
