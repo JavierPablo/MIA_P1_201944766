@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"project/internal/aplication"
 	"project/internal/datamanagment"
 	"project/internal/formats"
@@ -19,6 +21,8 @@ import (
 var Ok = color.New(color.FgGreen)
 var Result = color.New(color.FgCyan)
 var Err = color.New(color.FgRed)
+var Line = color.New(color.FgBlack)
+var Print = color.New(color.FgYellow)
 func main(){
 	
 	
@@ -58,6 +62,9 @@ func execute(input string,or_tasks *[]*parser.Task,app *aplication.Aplication, i
 		tasks=parsing.Tasks
 	}
 	for _, task := range tasks {
+		if task.Command != "print"{
+			Line.Println(task.To_raw_string())
+		}
 		switch strings.ToLower(task.Command) {
 		case "mkdisk":
 			params,err:=task.Get_MkdiskParam()
@@ -76,9 +83,9 @@ func execute(input string,or_tasks *[]*parser.Task,app *aplication.Aplication, i
 				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
 				continue
 			}
-			done := app.Remove_disk(params.Driverletter,disk_path)
-			if !done{
-				Err.Printf("Command \"%s\" failed in execution:\n",task.Command)
+			err = app.Remove_disk(params.Driveletter,disk_path)
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
 				continue
 			}
 		case "fdisk":
@@ -87,7 +94,7 @@ func execute(input string,or_tasks *[]*parser.Task,app *aplication.Aplication, i
 				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
 				continue
 			}
-			io,err := ioservice_pool.Get_service_with(params.Driverletter)
+			io,err := ioservice_pool.Get_service_with(params.Driveletter)
 			if err!=nil{
 				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
 				continue
@@ -95,7 +102,7 @@ func execute(input string,or_tasks *[]*parser.Task,app *aplication.Aplication, i
 			if params.Delete{
 				
 			}else if params.Add != 0{
-				err = app.Modify_partition_size_in_disk(params.Size,io,params.Name,params.Unit)
+				err = app.Modify_partition_size_in_disk(params.Add,io,params.Name,params.Unit)
 
 			}else{	
 				_,edrr := app.Partition_disk(params.Size,io,params.Name,params.Unit,params.Type,params.Fit)
@@ -111,12 +118,17 @@ func execute(input string,or_tasks *[]*parser.Task,app *aplication.Aplication, i
 				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
 				continue
 			}
-			io,err := ioservice_pool.Get_service_with(params.Driverletter)
+			io,err := ioservice_pool.Get_service_with(params.Driveletter)
 			if err!=nil{
 				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
 				continue
 			}			
-			app.Mount_partition(io,params.Name,params.Driverletter)
+			err= app.Mount_partition(io,params.Name,params.Driveletter)
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}			
+
 		case "unmount":
 			params,err:=task.Get_UnmountParam()
 			if err!=nil{
@@ -243,7 +255,7 @@ func execute(input string,or_tasks *[]*parser.Task,app *aplication.Aplication, i
 					content = append(content, strconv.Itoa(rand.Intn(10)))
 				}
 			}else{
-				Err.Printf("Command failed in execution:\nThere is no content for file")
+				Err.Printf("Command failed in execution:\nThere is no content for file\n")
 				continue
 			}
 			dirs:=strings.Split(params.Path, "/")[1:]
@@ -599,85 +611,79 @@ func execute(input string,or_tasks *[]*parser.Task,app *aplication.Aplication, i
 				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
 				continue
 			}
-			file, err :=os.Create(params.Path)
-			if err!=nil{
-				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
-				continue
-			}
-			var dot_str string
+			
+			var report_content string
 			switch params.Name {
 			case "mbr":
 				ioservice,err:=ioservice_pool.Get_service_with(params.Id)
 				if err!=nil{
 					Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
-					file.Close()
 					continue
 				}
-				dot_str, err = app.Mbr_repo(ioservice)
+				report_content, err = app.Mbr_repo(ioservice)
 				if err!=nil{
 					Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
-					file.Close()
 					continue
 				}
 			case "disk":
 				ioservice,err:=ioservice_pool.Get_service_with(params.Id)
 				if err!=nil{
 					Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
-					file.Close()
+					
 					continue
 				}
-				dot_str,err=app.Disk_repos(ioservice)
+				report_content,err=app.Disk_repos(ioservice)
 				if err!=nil{
 					Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
-					file.Close()
+					
 					continue
 				}
 			case "inode":
-				dot_str,err=app.Inode_repos(params.Id)
+				report_content,err=app.Inode_repos(params.Id)
 				if err!=nil{
 					Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
-					file.Close()
+					
 					continue
 				}
 			case "block":
-				dot_str,err=app.Block_repos(params.Id)
+				report_content,err=app.Block_repos(params.Id)
 				if err!=nil{
 					Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
-					file.Close()
+					
 					continue
 				}
 			case "bm_inode":
-				dot_str,err=app.Inode_bitmap_repos(params.Id)
+				report_content,err=app.Inode_bitmap_repos(params.Id)
 				if err!=nil{
 					Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
-					file.Close()
+					
 					continue
 				}
 			case "bm_block":
-				dot_str,err=app.Block_bitmap_repos(params.Id)
+				report_content,err=app.Block_bitmap_repos(params.Id)
 				if err!=nil{
 					Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
-					file.Close()
+					
 					continue
 				}
 			case "tree":
-				dot_str,err=app.Tree_repos(params.Id)
+				report_content,err=app.Tree_repos(params.Id)
 				if err!=nil{
 					Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
-					file.Close()
+					
 					continue
 				}
 			case "sb":
-				dot_str,err=app.Super_block_repo(params.Id)
+				report_content,err=app.Super_block_repo(params.Id)
 				if err!=nil{
 					Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
-					file.Close()
+					
 					continue
 				}
 			case "file":
 				if params.Ruta == ""{
 					Err.Printf("Command \"%s\" failed in execution:\n Path vas not specified",task.Command)
-					file.Close()
+					
 
 					continue
 				}
@@ -691,14 +697,14 @@ func execute(input string,or_tasks *[]*parser.Task,app *aplication.Aplication, i
 				content,err := app.Show_file(folders,file_name)
 				if err!=nil{
 					Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
-					file.Close()
+					
 					continue
 				}
-				dot_str = content
+				report_content = content
 			case "ls":
 				if params.Ruta == ""{
 					Err.Printf("Command \"%s\" failed in execution:\n Path vas not specified",task.Command)
-					file.Close()
+					
 					continue
 				}
 				var folders [][12]string
@@ -711,25 +717,38 @@ func execute(input string,or_tasks *[]*parser.Task,app *aplication.Aplication, i
 						folders = append(folders, utiles.Into_ArrayChar12(dirs[i]))
 					}
 				}
-				dot_str,err = app.Ls_report(params.Id,folders)
+				report_content,err = app.Ls_report(params.Id,folders)
 				if err!=nil{
 					Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
-					file.Close()
+					
 					continue
 				}
 			case "journaling":
-				dot_str,err=app.Journaling(params.Id)
+				report_content,err=app.Journaling(params.Id)
 				if err!=nil{
 					Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
-					file.Close()
+					
 					continue
 				}
 			}
-			file.Write([]byte(dot_str))
-			file.Close()
-		default: 
-			Err.Println("Command not recognized")
+			err=render_reports(params.Path,report_content)
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+		case "print":
+			params,err:=task.Get_PrintParam()
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+			Print.Println(params.Val)
 			continue
+
+		default: 
+		Err.Println("Command not recognized for")
+		Err.Println(task.Command)
+		continue
 		}
 		Ok.Printf("Comando \"%s\" ejecutado con exito\n",task.Command)
 		// ioservice_pool.Flush_changes()
@@ -737,57 +756,48 @@ func execute(input string,or_tasks *[]*parser.Task,app *aplication.Aplication, i
 }
 
 
-func bestfit(){
-	sm := datamanagment.SpaceManager_from_free_spaces([]datamanagment.Space{
-		datamanagment.New_Space(0,3),datamanagment.New_Space(5,2),datamanagment.New_Space(10,10) },20)
-	sm.Log_chunks_state()
-	fmt.Printf("Best fit for 1 in index = %d\n",sm.Best_fit(1))
-	sm.Log_chunks_state()
-	fmt.Printf("Worst fit for 1 in index = %d\n",sm.Worst_fit(1))
-	sm.Log_chunks_state()
-	inx := sm.First_fit(6)
-	fmt.Printf("First fit for 6 in index = %d\n",inx)
-	sm.Log_chunks_state()
-	fmt.Println("Occuping that space")
-	sm.Ocupe_space_unchecked(int(inx),6)
-	sm.Log_chunks_state()
-	fmt.Println("Erasing [12,13]")
-	sm.Free_space(1,12)
-	sm.Log_chunks_state()
-	sm.Ocupe_space_unchecked(2,1)
-	sm.Log_chunks_state()
-	fmt.Println("-----------------------------------------------")
-	fmt.Println("Simulating simetric case with occuped spaces")
-	fmt.Println("-----------------------------------------------")
-	sm,_ = datamanagment.SpaceManager_from_occuped_spaces([]datamanagment.Space{
-		datamanagment.New_Space(3,2),datamanagment.New_Space(7,3),
-	},20)
-	sm.Log_chunks_state()
-	fmt.Printf("Best fit for 1 in index = %d\n",sm.Best_fit(1))
-	sm.Log_chunks_state()
-	fmt.Printf("Worst fit for 1 in index = %d\n",sm.Worst_fit(1))
-	sm.Log_chunks_state()
-	inx = sm.First_fit(6)
-	fmt.Printf("First fit for 6 in index = %d\n",inx)
-	sm.Log_chunks_state()
-	fmt.Println("Occuping that space")
-	sm.Ocupe_space_unchecked(int(inx),6)
-	sm.Log_chunks_state()
-	fmt.Println("Erasing [12,13]")
-	sm.Free_space(1,12)
-	sm.Log_chunks_state()
-	sm.Ocupe_space_unchecked(2,1)
-	sm.Log_chunks_state()
-	fmt.Println("Free space in [7,15]")
-	sm.Free_space(9,7)
-	sm.Log_chunks_state()
-	fmt.Println("Free space in [3,5]")
-	sm.Free_space(2,3)
-	sm.Log_chunks_state()
-	fmt.Println("Ocupe space in [9,13]")
-	sm.Ocupe_raw_space(5,9)
-	sm.Log_chunks_state()
-	fmt.Println("Ocupe space in [5,5]")
-	sm.Ocupe_raw_space(1,5)
-	sm.Log_chunks_state()
+
+func render_reports(dest_path string,content string)error{
+	dir := filepath.Dir(dest_path)
+    if err := os.MkdirAll(dir, 0777); err != nil {return err}
+	splited_path:=strings.Split(dest_path, "/")
+	last_name:=splited_path[len(splited_path)-1]
+	DOT_TEMP_PATH:="./temp.dot"
+	switch strings.ToLower(strings.Split(last_name, ".")[1]) {
+	case "txt":
+		file, err :=os.Create(dest_path)
+		if err!=nil{return err}
+		file.Write([]byte(content))
+		file.Close()
+	case "pdf":
+		file, err :=os.Create(DOT_TEMP_PATH)
+		if err!=nil{return err}
+		file.Write([]byte(content))
+		file.Close()
+		cmd := exec.Command("dot", "-Tpdf",DOT_TEMP_PATH,"-o",dest_path)
+		_, err = cmd.Output()
+    	if err != nil {return err}
+	case "jpg","jpeg":
+		file, err :=os.Create(DOT_TEMP_PATH)
+		if err!=nil{return err}
+		file.Write([]byte(content))
+		file.Close()
+		cmd := exec.Command("dot", "-Tjpg",DOT_TEMP_PATH,"-o",dest_path)
+		b, err := cmd.Output()
+		
+    	if err != nil {
+			Err.Println(string(b))
+			return err
+		}
+	case "png":
+		file, err :=os.Create(DOT_TEMP_PATH)
+		if err!=nil{return err}
+		file.Write([]byte(content))
+		file.Close()
+		cmd := exec.Command("dot", "-Tpng",DOT_TEMP_PATH,"-o",dest_path)
+		_, err = cmd.Output()
+    	if err != nil {return err}
+		
+	}    
+    return nil
 }

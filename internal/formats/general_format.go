@@ -107,6 +107,7 @@ func Format_new_fresh_FormatEXT2(super_service *datamanagment.IOService,fit util
 const JOURNALING_SIZE int32 = 100
 func Get_FormatEXT3_for_heal(super_service *datamanagment.IOService,index int32,fit utiles.FitCriteria)*Format{
 	super_block:=    types.CreateSuperBlock(super_service,index)
+
 	inodes_size:= super_block.S_inode_s().Get()
 	blocks_size :=super_block.S_block_s().Get()
 	
@@ -114,6 +115,9 @@ func Get_FormatEXT3_for_heal(super_service *datamanagment.IOService,index int32,
 	if index+super_block.Size == bm_inode_start{return nil}
 	bm_block_start:=super_block.S_bm_block_start().Get()
 	sec_inode_start:=super_block.S_inode_start().Get()
+
+	super_block.S_firts_ino().Set(sec_inode_start)
+
 	sec_block_start:=super_block.S_block_start().Get()
 
 	inodes_count:=super_block.S_inodes_count().Get()

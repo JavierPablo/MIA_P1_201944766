@@ -34,7 +34,8 @@ func (self *Aplication) Make_disk(size int32, unite utiles.SizeUnit, fit utiles.
 	// 	_, err = file.Write(buffer)
 	// 	if err != nil {return "",types.MasterBootRecord{}, fmt.Errorf("Problems writing 0s in disk")}
 	// }
-	io_service:=datamanagment.IOService_from_bytes(path,buffer)	
+	io_service,err:=datamanagment.IOService_from(path)	
+	if err!=nil{return "",types.MasterBootRecord{},err}
 	mbr := types.CreateMasterBootRecord(&io_service,0)
 	mbr.Mbr_tamano().Set(int32(total_bytes))
 	mbr.Mbr_fecha_creacion().Set(utiles.Current_Time())
@@ -46,10 +47,10 @@ func (self *Aplication) Make_disk(size int32, unite utiles.SizeUnit, fit utiles.
 	return path,mbr,nil
 }
 
-func (self *Aplication) Remove_disk(letter string,DISK_CONTAINER_PATH string) bool{
-	path := DISK_CONTAINER_PATH+"/"+letter
+func (self *Aplication) Remove_disk(letter string,DISK_CONTAINER_PATH string) error{
+	path := DISK_CONTAINER_PATH+"/"+letter+".dsk"
 	err := os.Remove(path)
-	return err == nil
+	return err
 
 }
 
@@ -102,7 +103,7 @@ func (self *Aplication) Get_extended_part_space_manager(extended_partition types
 	
 	return space_manager,nil
 }
-func (self *Aplication) Get_extended_partition(mbr types.MasterBootRecord)(bool,types.Partition){
+func (self *Aplication) Get_extended_partition(mbr types.MasterBootRecord)(error,types.Partition){
 	var extended_partition types.Partition
 	found := false
 	for _,partition := range mbr.Mbr_partitions().Spread(){
@@ -114,10 +115,9 @@ func (self *Aplication) Get_extended_partition(mbr types.MasterBootRecord)(bool,
 		}
 	}
 	if !found{
-		Err.Println("Extendes partition has not been created yet")
-		return false,types.Partition{}
+		return fmt.Errorf("Extendes partition has not been created yet"),types.Partition{}
 	}
-	return true,extended_partition
+	return nil,extended_partition
 }
 func (self *Aplication) Get_disk_partitions_space_manager(mbr types.MasterBootRecord)(datamanagment.SpaceManager,error){
 	partitins_spaces := make([]datamanagment.Space, 0,4)
@@ -143,40 +143,42 @@ func (self *Aplication) Find_p_or_e_partition_by_name(mbr types.MasterBootRecord
 	}
 	return false,types.Partition{}
 }
-func (self *Aplication) Find_logical_partition_by_name(extended_partition types.Partition,p_name [16]string)(bool,types.ExtendedBootRecord){
+func (self *Aplication) Find_logical_partition_by_name(extended_partition types.Partition,p_name [16]string)(error,types.ExtendedBootRecord){
 	begin := extended_partition.Part_start().Get()
 	ebr := types.CreateExtendedBootRecord(extended_partition.Super_service,begin)
 	next_ebr_index := ebr.Part_next().Get()
 	if ebr.Part_start().Get() != -1 && ebr.Part_name().Get() == p_name{
-		return true,ebr
+		return nil,ebr
 	}
 	
 	for next_ebr_index != -1{
 		ebr = types.CreateExtendedBootRecord(ebr.Super_service,next_ebr_index)
 		next_ebr_index = ebr.Part_next().Get()
 		if ebr.Part_start().Get() != -1 && ebr.Part_name().Get() == p_name{
-			return true,ebr
+			return nil,ebr
 		}
 	}
-	return false,types.ExtendedBootRecord{}
+	return fmt.Errorf("No logical partition found"),types.ExtendedBootRecord{}
 }
 func (self *Aplication) modify_logical_partition(mbr types.MasterBootRecord,add int32,p_name [16]string)error{
 	
-	found,extended_partition:= self.Get_extended_partition(mbr)
+	found_err,extended_partition:= self.Get_extended_partition(mbr)
 	begin := extended_partition.Part_start().Get()
 
-	if !found{
-		return fmt.Errorf("Extendes partition has not been created yet")
+	if found_err != nil{
+		return found_err
 	}
 	space_manager,err := self.Get_extended_part_space_manager(extended_partition)
 	if err !=nil {return err}
 
 	
-	result,ebr:=self.Find_logical_partition_by_name(extended_partition,p_name)
-	if !result{
-		return fmt.Errorf("NO partition with thtat name")
+	err,ebr:=self.Find_logical_partition_by_name(extended_partition,p_name)
+	if err!=nil{
+		return err
 	}
 	if add < 0 {
+		if -add >ebr.Part_s().Get(){return fmt.Errorf("requested size for substraction is greather than actual size")}
+
 		result := space_manager.Free_space(-add,ebr.Part_start().Get()+ebr.Part_s().Get()-begin+add)
 		if result != nil{
 			return result
@@ -184,6 +186,10 @@ func (self *Aplication) modify_logical_partition(mbr types.MasterBootRecord,add 
 	}else{
 		result := space_manager.Ocupe_raw_space(add,ebr.Part_start().Get()+ebr.Part_s().Get()-begin)
 		if result != nil{
+			new_start:=ebr.Part_start().Get() - add
+			result := space_manager.Ocupe_raw_space(add,new_start - mbr.Size)
+			if result != nil {return result}
+			ebr.Part_start().Set(new_start)
 			return result
 		}
 	}
@@ -197,26 +203,37 @@ func (self *Aplication) Modify_partition_size_in_disk(size int32, io_service *da
 	mbr := types.CreateMasterBootRecord(io_service,0)
 	partition_found,partition_trgt := self.Find_p_or_e_partition_by_name(mbr,partition_name)
 	if !partition_found {
+		// fmt.Println("------------------------------modifyng logical partition-------------------------")
 		return self.modify_logical_partition(mbr,add,partition_name)
 	}
 	space_manager,err := self.Get_disk_partitions_space_manager(mbr)
 	if err !=nil {return err}
+	// fmt.Println("-----------------------modifyng primary partition--------------------------------")
 
 	space_manager.Log_chunks_state()
 	if add < 0 {
+		// fmt.Println("--------------------removing sapce-----------------------------------")
+
+		if -add >partition_trgt.Part_s().Get(){return fmt.Errorf("requested size for substraction is greather than actual size")}
 		result := space_manager.Free_space(-add,partition_trgt.Part_start().Get()+partition_trgt.Part_s().Get()-mbr.Size+add)
 		if result != nil{
 			return result
 		}
 	}else{
+		// fmt.Println("--------------------adding space-----------------------------------")
+		// fmt.Println(add)
 		result := space_manager.Ocupe_raw_space(add,partition_trgt.Part_start().Get()+partition_trgt.Part_s().Get()-mbr.Size)
 		if result != nil{
-			return result
+			// try in begin then
+			new_start:=partition_trgt.Part_start().Get() - add
+			result := space_manager.Ocupe_raw_space(add,new_start - mbr.Size)
+			if result != nil {return result}
+			partition_trgt.Part_start().Set(new_start)
 		}
 	}
 	partition_trgt.Part_s().Set(partition_trgt.Part_s().Get()+add)
 	return nil
-	}
+}
 
 func (self *Aplication) Partition_disk(size int32, io_service *datamanagment.IOService, 
 	p_name string, unite utiles.SizeUnit, partition_type utiles.PartitionType,
@@ -235,12 +252,11 @@ func (self *Aplication) Partition_disk(size int32, io_service *datamanagment.IOS
 		}
 		return self.create_EP_partitions(mbr,utiles.Extendend,partition_size,fit,p_name)
 	}else if partition_type == utiles.Logic{
-		found,extended_partition:= self.Get_extended_partition(mbr)
-		begin :=extended_partition.Part_start().Get()
-
-		if !found{
-			return -1,fmt.Errorf("Extendes partition has not been created yet")
+		found_err,extended_partition:= self.Get_extended_partition(mbr)
+		if found_err != nil{
+			return -1,found_err
 		}
+		begin :=extended_partition.Part_start().Get()
 		space_manager,err := self.Get_extended_part_space_manager(extended_partition)
 		if err !=nil {return -1,err}
 
@@ -248,7 +264,7 @@ func (self *Aplication) Partition_disk(size int32, io_service *datamanagment.IOS
 	
 		ebr_abs_index := potential_ebr.Index
 		if potential_ebr.Part_start().Get() != -1{
-			ebr_space_index,err := Try_fit(&space_manager,potential_ebr.Size,extended_partition.Part_fit().Get())
+			ebr_space_index,err := Try_fit(&space_manager,potential_ebr.Size,extended_partition.Part_fit().Get()+"F")
 			if err!=nil{return -1,err}
 			if ebr_space_index == -1{return -1,fmt.Errorf("There is no enough space for the ebr")}
 	
@@ -256,7 +272,7 @@ func (self *Aplication) Partition_disk(size int32, io_service *datamanagment.IOS
 			potential_ebr.Part_next().Set(ebr_abs_index)
 		}
 
-		part_space_index,err := Try_fit(&space_manager,partition_size,extended_partition.Part_fit().Get())
+		part_space_index,err := Try_fit(&space_manager,partition_size,extended_partition.Part_fit().Get() + "F")
 		if err!=nil{return -1,err}
 		if part_space_index == -1{return -1,fmt.Errorf("There is no enough space for the logic partition itself")}
 
@@ -328,7 +344,7 @@ func (self *Aplication) create_EP_partitions(mbr types.MasterBootRecord,p_type u
 	return abs_indx,nil
 }
 func Try_fit(self *datamanagment.SpaceManager,for_length int32,of_type string) (int32,error){
-	switch of_type{
+	switch strings.ToUpper(of_type){
 		case string(utiles.Best):
 			return self.Best_fit(for_length),nil
 		case string(utiles.Worst):
@@ -346,14 +362,14 @@ func Try_fit(self *datamanagment.SpaceManager,for_length int32,of_type string) (
 
 
 
-func (self *Aplication) Mount_partition(io_service *datamanagment.IOService, p_name string, letter string) bool{
+func (self *Aplication) Mount_partition(io_service *datamanagment.IOService, p_name string, letter string) error{
 	mbr := types.CreateMasterBootRecord(io_service,0)
 	result,partition := self.Find_p_or_e_partition_by_name(mbr,utiles.Into_ArrayChar16(p_name))
 	if !result{
-		result,extp := self.Get_extended_partition(mbr)
-		if !result{ return false }
-		result,ebr := self.Find_logical_partition_by_name(extp,utiles.Into_ArrayChar16(p_name))
-		if !result{ return false }
+		err,extp := self.Get_extended_partition(mbr)
+		if err != nil{ return fmt.Errorf("partition with that name doesnt exist") }
+		err,ebr := self.Find_logical_partition_by_name(extp,utiles.Into_ArrayChar16(p_name))
+		if err != nil{ return err }
 		self.logic_correlative++
 		ebr.Part_mount().Set("Y")
 		id := letter + strconv.Itoa(int(self.logic_correlative)) + "66" + "L"
@@ -373,10 +389,10 @@ func (self *Aplication) Mount_partition(io_service *datamanagment.IOService, p_n
 		})
 		super_block := types.CreateSuperBlock(ebr.Super_service,ebr.Part_start().Get())
 		format := super_block.S_filesystem_type().Get()
-		if format != int32(utiles.Ext2) && format != int32(utiles.Ext3){return true}
+		if format != int32(utiles.Ext2) && format != int32(utiles.Ext3){return nil}
 		super_block.S_mtime().Set(utiles.Current_Time())
 		super_block.S_mnt_count().Set(super_block.S_mnt_count().Get()+1)
-		return true
+		return nil
 	}
 	self.partition_correlative++
 	id := letter + strconv.Itoa(int(self.partition_correlative)) + "66"
@@ -404,10 +420,10 @@ func (self *Aplication) Mount_partition(io_service *datamanagment.IOService, p_n
 		super_block.S_mnt_count().Set(super_block.S_mnt_count().Get()+1)
 	}
 	// self.Put_service(letter,*io_service)
-	return true
+	return nil
 }
 
-func (self *Aplication) Unmount_partition(id string) bool{
+func (self *Aplication) Unmount_partition(id string) error{
 	// io_service := self.Get_service(id)
 	for i := 0; i < len(self.mounted_partitions); i++ {
 		if (self.mounted_partitions[i]).id != id{continue}
@@ -434,11 +450,11 @@ func (self *Aplication) Unmount_partition(id string) bool{
 		if format == int32(utiles.Ext2) || format == int32(utiles.Ext3){
 			super_block.S_umtime().Set(utiles.Current_Time())
 		}
-		return true
+		return nil
 	
 
 	}
-	return false
+	return fmt.Errorf("mounted partition with that id not found")
 }
 
 
@@ -486,6 +502,7 @@ func (self *Aplication) Format_mounted_partition(id string, p_type bool, format 
 	}
 	return fmt.Errorf("There is no mounted partition with that name")
 }
+
 
 
 

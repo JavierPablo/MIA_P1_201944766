@@ -109,6 +109,7 @@ func (self *SessionManager) Get_User_by_id(id int)(*User,error){
 }
 
 func (self *SessionManager) Try_log_user(user string, pass string)error{
+	if self.active_user != nil {return fmt.Errorf("there's already an active user. Must log out first")}
 	for n, u := range self.users {
 		if u.name == user {
 			if u.password != pass {
@@ -291,7 +292,7 @@ type User struct{
 	group string
 }
 func (self *User) to_string_line()string{
-	return fmt.Sprintf("%d,U,%s,%s,%s\n",self.correlative_number,self.name,self.group,self.password)
+	return fmt.Sprintf("%d,U,%s,%s,%s\n",self.correlative_number,self.group,self.name,self.password)
 }
 func (self *User) available()bool{
 	return self.correlative_number != 0
@@ -314,6 +315,7 @@ type Entity interface{
 	to_string_line()string;
 	available()bool;
 }
+
 
 
 

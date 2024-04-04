@@ -186,6 +186,9 @@ func (self *Aplication) Loss_ext3(id string) error{
 			if !format.Has_journaling(){
 				return fmt.Errorf("can not apply loss command to ext2 formated partition")
 			}
+			sp_blck:=types.CreateSuperBlock(io_service,super_block_index)
+			sp_blck.S_firts_ino().Set(-1)
+
 			format.Block_bitmap.Clear()
 			format.Inodes_bitmap.Clear()
 			format.Block_section.Clear()

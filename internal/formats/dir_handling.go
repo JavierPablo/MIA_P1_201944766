@@ -317,17 +317,53 @@ func (self *Format)try_put_in_new_dir_block_in_existing_ptr(dir types.IndexNode,
 		}
 	}
 	if pntr_block_available != nil{
-
+		return self.create_new_ptr_and_blocks(&pntr_block_available.ptr_block,pntr_block_available.level,trgt_inode,name)
 	}else{
 		if dir.I_block().No(13).Get() == -1 {
-
+			_,new_ptr_blck:=self.Create_PointerBlock()
+			dir.I_block().No(int32(13)).Set(new_ptr_blck.Index)
+			return self.create_new_ptr_and_blocks(&new_ptr_blck,0,trgt_inode,name)
 		}else if dir.I_block().No(14).Get() == -1 {
-
+			_,new_ptr_blck:=self.Create_PointerBlock()
+			dir.I_block().No(int32(14)).Set(new_ptr_blck.Index)
+			return self.create_new_ptr_and_blocks(&new_ptr_blck,1,trgt_inode,name)
 		}else if dir.I_block().No(15).Get() == -1 {
-
+			_,new_ptr_blck:=self.Create_PointerBlock()
+			dir.I_block().No(int32(15)).Set(new_ptr_blck.Index)
+			return self.create_new_ptr_and_blocks(&new_ptr_blck,2,trgt_inode,name)
 		}
 	}
 	return types.CreateIndexNode(nil,-1)
+}
+func (self *Format)create_new_ptr_and_blocks(pointer_block *types.PointerBlock, level int32, trgt_inode InodeTemplate,name [12]string) types.IndexNode{
+	if level != 0 {
+		for i,ptr := range pointer_block.B_pointers().Get(){
+			if ptr != -1 { continue }
+			_,new_ptr_blck:=self.Create_PointerBlock()
+			pointer_block.B_pointers().No(int32(i)).Set(new_ptr_blck.Index)
+			trgt_block := self.create_new_ptr_and_blocks(&new_ptr_blck,level-1,trgt_inode,name)
+			return trgt_block
+		}
+		panic("Wrong determination for free block pointer")
+
+	}
+	for n,ptr := range pointer_block.B_pointers().Get(){
+		if ptr != -1 { continue }
+		_,new_dir_block := self.Create_DirectoryBlock()
+		pointer_block.B_pointers().No(int32(n)).Set(new_dir_block.Index)
+		var new_inode types.IndexNode
+		if trgt_inode.is_index(){
+			new_inode = types.CreateIndexNode(self.super_service,trgt_inode.index)
+		}else{
+			_,new_inode=self.Create_Inode(trgt_inode.sketch)
+		}
+		new_dir_block.B_content().No(0).Set(types.ContentHolder{
+			B_name:  name,
+			B_inodo: new_inode.Index,
+		})
+		return new_inode
+	}
+	panic("Wrong determination for free block pointer")
 }
 func (self *Format)case1_ptr_blck(pointer_block *types.PointerBlock, level int32, trgt_inode InodeTemplate,name [12]string) types.IndexNode{
 	if level != 0 {
@@ -543,7 +579,7 @@ func (self *Format) Wrap_holder_in_template(template types.IndexNodeHolder)Inode
 		sketch: template,
 	}
 }
-func (self *Format) Get_nested_dir(init_dir types.IndexNode, folders [][12]string, create_recursive bool,usr_id int32,usr_grp_id int32,time types.TimeHolder,for_read bool,for_write bool) (bool,types.IndexNode) {
+func (self *Format) Get_nested_dir(init_dir types.IndexNode, folders [][12]string, create_recursive bool,usr_id int32,usr_grp_id int32,time types.TimeHolder,for_read bool,for_write bool) (error,types.IndexNode) {
 	init_dir.I_atime().Set(time)
 	dir := init_dir
 	for _, dir_name := range folders {
@@ -552,7 +588,7 @@ func (self *Format) Get_nested_dir(init_dir types.IndexNode, folders [][12]strin
 
 		if result == -1 {
 			if !create_recursive {
-				return false,types.IndexNode{}
+				return fmt.Errorf("path doesnt exist and recursive creation is disabled"),types.IndexNode{}
 			}
 			new_dir := self.Put_in_dir(dir,self.Wrap_holder_in_template(types.IndexNodeHolder{
 					I_uid:   usr_id,
@@ -566,25 +602,25 @@ func (self *Format) Get_nested_dir(init_dir types.IndexNode, folders [][12]strin
 					I_perm:  utiles.UGO_PERMITION_664.To_arr_string(),
 				}),dir_name)
 			if new_dir.Index == -1 {
-				return false,types.IndexNode{}
+				return fmt.Errorf("problems in creating new dirs"),types.IndexNode{}
 			}
 			self.Set_parent_child_relation(dir,new_dir)
 			dir.I_mtime().Set(time)
 			dir = new_dir
 		} else {
 			dir = types.CreateIndexNode(content.Super_service,content.B_inodo().Get())
-			if dir.I_type().Get() == string(utiles.File) {return false,types.IndexNode{}}
+			if dir.I_type().Get() == string(utiles.File) {return fmt.Errorf("dir inode is actually a file, cant be used for nesting other dirs"),types.IndexNode{}}
 			permisions := self.User_allowed_actions(usr_id,usr_grp_id,&dir)
 			if for_read && !permisions.Can_read(){
-				return false,types.IndexNode{}
+				return fmt.Errorf("read denied due lack of read permitions over this dir"),types.IndexNode{}
 			}
 			if for_write && !permisions.Can_write(){
-				return false,types.IndexNode{}
+				return fmt.Errorf("write denied due lack of write permitions over this dir"),types.IndexNode{}
 			}
 			dir.I_atime().Set(time)
 		}
 	}
-	return true,dir
+	return nil,dir
 }
 
 
@@ -683,7 +719,7 @@ func (self *Format)Erase_inode_content(inode types.IndexNode, inode_type utiles.
 					permision := self.User_allowed_actions(usr_id,usr_grp_id,&sub_inode)
 					can_erase_inode:=false
 					if sub_inode.I_type().Get()== string(utiles.Directory){
-						fmt.Println(content.B_name)
+						// fmt.Println(content.B_name)
 						can_erase_inode = self.Erase_inode_content(sub_inode,utiles.Directory,usr_id,usr_grp_id,time)
 					}else if permision.Can_write(){
 						can_erase_inode = self.Erase_inode_content(sub_inode,utiles.File,usr_id,usr_grp_id,time)
@@ -741,7 +777,7 @@ func (self *Format)Remove_inode_if_possilbe(in_dir types.IndexNode,with_name [12
 					permission := self.User_allowed_actions(usr_id,usr_grp_id,&sub_inode)
 					can_erase_inode:=false
 					if sub_inode.I_type().Get()== string(utiles.Directory){
-						fmt.Println(content.B_name)
+						// fmt.Println(content.B_name)
 						can_erase_inode = self.Erase_inode_content(sub_inode,utiles.Directory,usr_id,usr_grp_id,time)
 					}else if permission.Can_write(){
 						can_erase_inode = self.Erase_inode_content(sub_inode,utiles.File,usr_id,usr_grp_id,time)
@@ -833,8 +869,8 @@ func (self *Format)Directory_deep_copy(dest_dir types.IndexNode,trgt_dir types.I
 	if !perm_to_dest.Can_write(){return false}
 	perm_to_trgt := self.User_allowed_actions(usr_id,usr_grp_id,&trgt_dir)
 	if !perm_to_trgt.Can_read(){return false}
-	fmt.Println("=====================")
-	fmt.Println(trgt_dir.I_type().Get())
+	// fmt.Println("=====================")
+	// fmt.Println(trgt_dir.I_type().Get())
 	switch trgt_dir.I_type().Get() {
 	case string(utiles.File):
 		new_inode := self.Put_in_dir(dest_dir,self.Wrap_holder_in_template(types.IndexNodeHolder{
@@ -946,15 +982,16 @@ func (self *Format)Change_ugo_permition(dest_dir types.IndexNode,time types.Time
 
 
 func (self *Format)Update_dir_and_ancestors_size(dir types.IndexNode,add_size int32) {
-	fmt.Printf("%d ============\n",dir.I_s().Get())
+	// fmt.Printf("%d ============\n",dir.I_s().Get())
 	dir.I_s().Set(dir.I_s().Get()+add_size)
-	fmt.Printf("%d ++++++++++++\n",dir.I_s().Get())
+	// fmt.Printf("%d ++++++++++++\n",dir.I_s().Get())
 	dir_blck:=types.CreateDirectoryBlock(dir.Super_service,dir.I_block().No(0).Get())
 	// fmt.Println(dir_blck.B_content().No(1).B_name().Get())
 	parent:=types.CreateIndexNode(dir.Super_service,dir_blck.B_content().No(1).B_inodo().Get())
 	if parent.Index == dir.Index {return}
 	self.Update_dir_and_ancestors_size(parent,add_size)
 }
+
 
 
 

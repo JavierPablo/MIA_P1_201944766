@@ -35,9 +35,9 @@ const (
 
 type FitCriteria string
 const (
-	First FitCriteria = "F"
-	Best FitCriteria = "B"
-	Worst FitCriteria = "W"
+	First FitCriteria = "FF"
+	Best FitCriteria = "BF"
+	Worst FitCriteria = "WF"
 )
 
 func Into_ArrayChar12(str string) [12]string{
@@ -97,23 +97,23 @@ var NO_TIME types.TimeHolder = types.TimeHolder{
 	Year:   0,
 }
 func Translate_size_unit(unit string)(SizeUnit,error){
-	switch unit {
-	case "K":
+	switch strings.ToLower(unit) {
+	case "k":
 		return Kb,nil
-	case "M":
+	case "m":
 		return Mb,nil
-	case "B":
+	case "b":
 		return B,nil
 	}
 	return B,fmt.Errorf("size unit criteria not valid for %s",unit)
 }
 func Translate_fit(fit string)(FitCriteria,error){
-	switch fit {
-	case string(First):
+	switch strings.ToLower(fit) {
+	case "f","ff":
 		return First,nil
-	case string(Worst):
+	case "w","wf":
 		return Worst,nil
-	case string(Best):
+	case "b","bf":
 		return Best,nil
 	}
 	return "",fmt.Errorf("Fit criteria not valid for %s",fit)
@@ -170,3 +170,4 @@ func (self *Char) Matches(trgt string) bool {
 	if self.any_case {return true}
 	return  self.char == trgt
 }
+

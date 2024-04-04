@@ -47,9 +47,9 @@ func (self *Aplication) Log_in_user(part_id string, user string, password string
 	return nil,fmt.Errorf("there's no partition with this id")
 }
 func (self *Aplication) Log_out()(*formats.JournalingManager,error){
-	if self.active_partition == nil {return nil,nil}
-	if !self.active_partition.has_session {return nil,nil}
-	if self.active_partition.session.active_user == nil {return nil,nil}
+	if self.active_partition == nil {return nil,fmt.Errorf("theres no active partition")}
+	if !self.active_partition.has_session {return nil,fmt.Errorf("there is an active partition but no one has loged in before")}
+	if self.active_partition.session.active_user == nil {return nil,fmt.Errorf("there is an active partition but no one has loged in before")}
 	var super_block_start int32
 		switch self.active_partition.part_type {
 		case utiles.Logic:
@@ -132,4 +132,5 @@ func (self *Aplication) Chagne_User_Group(user string, group_name string)(*forma
 	if result !=nil {return nil,result}
 	return self.active_partition.Write_session_to_root_file(io_service)
 }
+
 

@@ -1,0 +1,413 @@
+digraph G {rankdir=LR;subgraph cluster_0 {
+			label="Journaling";node[shape=none];
+				node3[label=<<TABLE  CELLSPACING="0" BORDER="0" CELLBORDER = "1" >
+				<TR><TD>Commands</TD><TD>Args</TD><TD>Date</TD></TR>
+				<TR><TD>Login</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>user</TD>
+						<TD>pass</TD>
+					</TR><TR>
+						<TD>root</TD>
+						<TD>123</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/1-2</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/2-1</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/2-2</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/3-1</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/3-2</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/4-1</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/4-2</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/5-1</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/5-2</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/6-1</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/6-2</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/7-1</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/7-2</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/8-1</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/8-2</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/9-1</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/9-2</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/10-1</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/10-2</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/11-1</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/11-2</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/12-1</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/12-2</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/13-1</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/13-2</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/14-1</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/14-2</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/15-1</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/15-2</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/16-1</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/16-2</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/17-1</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/17-2</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/18-1</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/18-2</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/19-1</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/19-2</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/20-1</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/20-2</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/21-1</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/21-2</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/22-1</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/22-2</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/23-1</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/23-2</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/indirecto-1</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/indirecto-2</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/indirecto-3</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/indirecto-4</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/indirecto-5</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/indirecto-6</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/indirecto-7</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/indirecto-8</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/indirecto-9</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/indirecto-10</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/indirecto-11</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR><TR><TD>Mkdir</TD><TD ><TABLE CELLSPACING="0" BORDER="0" CELLBORDER = "1"  >
+					<TR>
+						<TD>recursive</TD>
+						<TD>path</TD>
+					</TR><TR>
+						<TD>N</TD>
+						<TD>/indirecto-12</TD>
+					</TR></TABLE></TD><TD>04/04/2024 08:53</TD></TR>
+				</TABLE>>];}}
+				

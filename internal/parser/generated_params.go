@@ -67,14 +67,14 @@ func (self *Task) Get_MkdiskParam() (MkdiskParam, error) {
 }
 
 type RmdiskParam struct {
-	Driverletter string
+	Driveletter string
 }
 
 func (self *Task) Get_RmdiskParam() (RmdiskParam, error) {
 
 	var res0 string
 	var err0 error
-	param0, err0 := self.get_value("driverletter")
+	param0, err0 := self.get_value("driveletter")
 	if err0 != nil {
 		return RmdiskParam{}, err0
 	}
@@ -82,20 +82,20 @@ func (self *Task) Get_RmdiskParam() (RmdiskParam, error) {
 	res0 = param0
 
 	return RmdiskParam{
-		Driverletter: res0,
+		Driveletter: res0,
 	}, nil
 
 }
 
 type FdiskParam struct {
-	Size         int32
-	Driverletter string
-	Name         string
-	Unit         utiles.SizeUnit
-	Type         utiles.PartitionType
-	Fit          utiles.FitCriteria
-	Delete       bool
-	Add          int32
+	Size        int32
+	Driveletter string
+	Name        string
+	Unit        utiles.SizeUnit
+	Type        utiles.PartitionType
+	Fit         utiles.FitCriteria
+	Delete      bool
+	Add         int32
 }
 
 func (self *Task) Get_FdiskParam() (FdiskParam, error) {
@@ -104,21 +104,23 @@ func (self *Task) Get_FdiskParam() (FdiskParam, error) {
 	var err0 error
 	param0, err0 := self.get_value("size")
 	if err0 != nil {
-		return FdiskParam{}, err0
-	}
+		res0 = 0
+	} else {
 
-	tempres0, err0 := strconv.Atoi(param0)
-	if err0 != nil {
-		return FdiskParam{}, err0
+		tempres0, err0 := strconv.Atoi(param0)
+		if err0 != nil {
+			return FdiskParam{}, err0
+		}
+		if tempres0 < 0 {
+			return FdiskParam{}, fmt.Errorf("value is negative")
+		}
+		res0 = int32(tempres0)
+
 	}
-	if tempres0 < 0 {
-		return FdiskParam{}, fmt.Errorf("value is negative")
-	}
-	res0 = int32(tempres0)
 
 	var res1 string
 	var err1 error
-	param1, err1 := self.get_value("driverletter")
+	param1, err1 := self.get_value("driveletter")
 	if err1 != nil {
 		return FdiskParam{}, err1
 	}
@@ -205,28 +207,49 @@ func (self *Task) Get_FdiskParam() (FdiskParam, error) {
 	}
 
 	return FdiskParam{
-		Size:         res0,
-		Driverletter: res1,
-		Name:         res2,
-		Unit:         res3,
-		Type:         res4,
-		Fit:          res5,
-		Delete:       res6,
-		Add:          res7,
+		Size:        res0,
+		Driveletter: res1,
+		Name:        res2,
+		Unit:        res3,
+		Type:        res4,
+		Fit:         res5,
+		Delete:      res6,
+		Add:         res7,
+	}, nil
+
+}
+
+type PrintParam struct {
+	Val string
+}
+
+func (self *Task) Get_PrintParam() (PrintParam, error) {
+
+	var res0 string
+	var err0 error
+	param0, err0 := self.get_value("val")
+	if err0 != nil {
+		return PrintParam{}, err0
+	}
+
+	res0 = param0
+
+	return PrintParam{
+		Val: res0,
 	}, nil
 
 }
 
 type MountParam struct {
-	Driverletter string
-	Name         string
+	Driveletter string
+	Name        string
 }
 
 func (self *Task) Get_MountParam() (MountParam, error) {
 
 	var res0 string
 	var err0 error
-	param0, err0 := self.get_value("driverletter")
+	param0, err0 := self.get_value("driveletter")
 	if err0 != nil {
 		return MountParam{}, err0
 	}
@@ -243,8 +266,8 @@ func (self *Task) Get_MountParam() (MountParam, error) {
 	res1 = param1
 
 	return MountParam{
-		Driverletter: res0,
-		Name:         res1,
+		Driveletter: res0,
+		Name:        res1,
 	}, nil
 
 }

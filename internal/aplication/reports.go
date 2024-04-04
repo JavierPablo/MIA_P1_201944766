@@ -17,32 +17,44 @@ func (self *Aplication) Mbr_repo(ioservice *datamanagment.IOService)(string,erro
 		if part.Part_type().Get() != string(utiles.Extendend) {
 			continue
 		}
-		if extended_partition.Part_start().Get() == -1{continue}
+		if part.Part_start().Get() == -1{continue}
 		extended_partition = &part
 
 	}
-	if extended_partition == nil {
-		return "",fmt.Errorf("extended partition not found")
-	}
-	begin := extended_partition.Part_start().Get()
-	ebr := types.CreateExtendedBootRecord(extended_partition.Super_service,begin)
-	next_ebr_index := ebr.Part_next().Get()
-
-	if ebr.Part_start().Get() != -1{
-		ebrs = append(ebrs, ebr.Dot_label())
-	}
-	for next_ebr_index != -1{
-		ebr = types.CreateExtendedBootRecord(ebr.Super_service,next_ebr_index)
-		next_ebr_index = ebr.Part_next().Get()
+	if extended_partition != nil {
+		begin := extended_partition.Part_start().Get()
+		ebr := types.CreateExtendedBootRecord(extended_partition.Super_service,begin)
+		next_ebr_index := ebr.Part_next().Get()
+	
 		if ebr.Part_start().Get() != -1{
 			ebrs = append(ebrs, ebr.Dot_label())
 		}
+		for next_ebr_index != -1{
+			ebr = types.CreateExtendedBootRecord(ebr.Super_service,next_ebr_index)
+			next_ebr_index = ebr.Part_next().Get()
+			if ebr.Part_start().Get() != -1{
+				ebrs = append(ebrs, ebr.Dot_label())
+			}
+		}
+
+		ebr_nodes := ""
+		for i := 0; i < len(ebrs); i++ {
+			ebr_nodes = fmt.Sprintf("y%d[color=black,shape=box,label=<%s>];\n",i,ebrs[i]) + ebr_nodes
+		}
+		return fmt.Sprintf(`
+		digraph G {
+			subgraph cluster_0{
+				label = "Reporte MBR";
+				node [color=white,label=<%s>];
+				a0;
+			}
+			subgraph cluster_1{
+				label = "Reporte EBR";
+				%s
+			}
+		}`,mbr.Dot_label(),ebr_nodes), nil
 	}
 
-	ebr_nodes := ""
-	for i := 0; i < len(ebrs); i++ {
-		ebr_nodes = fmt.Sprintf("y%d[color=black,shape=box,label=<%s>];\n",i,ebrs[i]) + ebr_nodes
-	}
 	return fmt.Sprintf(`
 	digraph G {
 		subgraph cluster_0{
@@ -50,11 +62,7 @@ func (self *Aplication) Mbr_repo(ioservice *datamanagment.IOService)(string,erro
 			node [color=white,label=<%s>];
 			a0;
 		}
-		subgraph cluster_1{
-			label = "Reporte EBR";
-			%s
-		}
-	}`,mbr.Dot_label(),ebr_nodes), nil
+	}`,mbr.Dot_label()), nil
 }
 
 
@@ -685,6 +693,9 @@ func (self *Aplication) Tree_repos(part_id string)(string,error){
 			fit,err = utiles.Translate_fit(partition.Part_fit().Get())
 			if err!=nil{return "",err}
 		}
+		sp_blck:=types.CreateSuperBlock(io_service,super_block_start)
+		if sp_blck.S_firts_ino().Get() == -1 {return "",fmt.Errorf("can not generate tree report for corrupted ext3 filesystem")}
+
 		format := formats.Recover_Format(io_service,super_block_start,fit)
 		format.Init_bitmap_mapping()
 		root_inode:=format.First_Inode()
@@ -762,6 +773,7 @@ func Recursive_tree_repo(root_inode *types.IndexNode,inode_bldr *InodeNodeBuilde
 					if cont.B_name == formats.OWN_DIR_NAME {continue}
 					if cont.B_name == formats.PARENT_DIR_NAME {continue}
 
+
 					another_inode:=types.CreateIndexNode(builder.IoService(),cont.B_inodo)
 					another_inode_bldr:=builder.New_Inode_node(name,another_inode)
 					dir_bldr.Connect(i,another_inode_bldr.id)
@@ -777,7 +789,7 @@ func Recursive_tree_repo(root_inode *types.IndexNode,inode_bldr *InodeNodeBuilde
 			if ptr == -1 {continue}
 			if n >= 13 {
 				ptr_block := types.CreatePointerBlock(builder.IoService(),ptr)
-				ptr_block_bldr:=builder.New_PntrBlock_node(ptr_block,utiles.Directory)
+				ptr_block_bldr:=builder.New_PntrBlock_node(ptr_block,utiles.File)
 				inode_bldr.Connect(n,ptr_block_bldr.id)
 				recursive_tree_repo_in_pointer(&ptr_block,int32(n-13),&ptr_block_bldr,builder)
 				builder.Collect_PntrBlock_node(&ptr_block_bldr)
@@ -817,6 +829,7 @@ func recursive_tree_repo_in_pointer(pointer_block *types.PointerBlock, level int
 				if cont.B_inodo == -1{continue}
 				if cont.B_name == formats.OWN_DIR_NAME {continue}
 				if cont.B_name == formats.PARENT_DIR_NAME {continue}
+
 				another_inode:=types.CreateIndexNode(builder.IoService(),cont.B_inodo)
 				another_inode_bldr:=builder.New_Inode_node(name,another_inode)
 				dir_block_builder.Connect(i,another_inode_bldr.id)
@@ -943,8 +956,8 @@ func (self *Aplication) Ls_report(part_id string,folders_trgt [][12]string) (str
 		session,err:=parse_into_session_manager(&format)
 		if err!=nil{return "",err}
 		root:=format.First_Inode()
-		succes,trgt_dir := format.Get_nested_dir(root,folders_trgt,false,1,1,current_time,false,false)
-		if !succes {return "",fmt.Errorf("dir not found")}
+		err0,trgt_dir := format.Get_nested_dir(root,folders_trgt,false,1,1,current_time,false,false)
+		if err0 != nil{return "",err0}
 		date_str_conv:= func(date types.TimeHolder)string{
 			return fmt.Sprintf("%d/%d/%d %d:%d",date.Day,date.Month,date.Year,date.Hour,date.Minute)
 		}

@@ -1,5 +1,7 @@
 package datamanagment
 
+import "fmt"
+
 
 type Disk struct{
 	letter string
@@ -23,7 +25,7 @@ func (self *IOServicePool) Get_service_with(letter string )(*IOService,error){
 		}
 	}
 	ioservice,err:=IOService_from(self.main_path+"/"+letter+".dsk")
-	if err != nil{return nil,err}
+	if err != nil{return nil,fmt.Errorf("can not open disk with %s letter because it doesnt exist",letter)}
 	self.pool = append(self.pool, Disk{
 		letter:     letter,
 		io_service: ioservice,
