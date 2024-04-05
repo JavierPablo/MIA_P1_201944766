@@ -135,7 +135,11 @@ func execute(input string,or_tasks *[]*parser.Task,app *aplication.Aplication, i
 				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
 				continue
 			}
-			app.Unmount_partition(params.Id)
+			err = app.Unmount_partition(params.Id)
+			if err!=nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
 		case "mkfs":
 			params,err:=task.Get_MkfsParam()
 			if err!=nil{
@@ -751,7 +755,7 @@ func execute(input string,or_tasks *[]*parser.Task,app *aplication.Aplication, i
 		continue
 		}
 		Ok.Printf("Comando \"%s\" ejecutado con exito\n",task.Command)
-		// ioservice_pool.Flush_changes()
+		ioservice_pool.Flush_changes()
 	}
 }
 

@@ -341,6 +341,7 @@ func (self *Aplication) Partition_disk(size int32, io_service *datamanagment.IOS
 		if found_err != nil{
 			return -1,found_err
 		}
+		// if extended_partition.Part_s().Get() < partition_size {return fmt.Errorf("can not make partition ")}
 		begin :=extended_partition.Part_start().Get()
 		space_manager,err := self.Get_extended_part_space_manager(extended_partition)
 		if err !=nil {return -1,err}
@@ -407,6 +408,7 @@ func (self *Aplication) create_EP_partitions(mbr types.MasterBootRecord,p_type u
 	
 	space_index,err := Try_fit(&space_manager,partition_size,string(fit))
 	if err != nil{return -1,err} 
+	// fmt.Printf("partition_size = %d at index = %d for fit %s \n ",partition_size,space_index,fit)
 	if space_index == -1{return -1,fmt.Errorf("There is no enough space for that operation")}
 
 	abs_indx := space_manager.Ocupe_space_unchecked(int(space_index),partition_size) + mbr.Size
@@ -479,6 +481,7 @@ func (self *Aplication) Mount_partition(io_service *datamanagment.IOService, p_n
 		super_block.S_mnt_count().Set(super_block.S_mnt_count().Get()+1)
 		return nil
 	}
+	if partition.Part_type().Get() == string(utiles.Extendend){return fmt.Errorf("can not mout extended partition")}
 	self.partition_correlative++
 	id := letter + strconv.Itoa(int(self.partition_correlative)) + "66"
 	partition.Part_status().Set("Y")

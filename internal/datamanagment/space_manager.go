@@ -171,6 +171,7 @@ func (self *SpaceManager) Worst_fit(for_length int32) int32{
 	for i := 0; i < len(self.free_spaces); i++ {
 		if for_length <= self.free_spaces[i].Length &&
 		 self.free_spaces[candidate].Length <= self.free_spaces[i].Length{
+			// fmt.Printf(self.free_spaces[i].Show())
 			candidate = i
 			candidate_exist = true
 		}
