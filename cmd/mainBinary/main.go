@@ -100,7 +100,7 @@ func execute(input string,or_tasks *[]*parser.Task,app *aplication.Aplication, i
 				continue
 			}
 			if params.Delete{
-				
+				err=app.Remove_partition_disk(io,params.Name)
 			}else if params.Add != 0{
 				err = app.Modify_partition_size_in_disk(params.Add,io,params.Name,params.Unit)
 

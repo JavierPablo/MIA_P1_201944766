@@ -210,7 +210,7 @@ func (self *Aplication) Modify_partition_size_in_disk(size int32, io_service *da
 	if err !=nil {return err}
 	// fmt.Println("-----------------------modifyng primary partition--------------------------------")
 
-	space_manager.Log_chunks_state()
+	// space_manager.Log_chunks_state()
 	if add < 0 {
 		// fmt.Println("--------------------removing sapce-----------------------------------")
 
@@ -235,6 +235,91 @@ func (self *Aplication) Modify_partition_size_in_disk(size int32, io_service *da
 	return nil
 }
 
+func (self *Aplication) Remove_partition_disk(io_service *datamanagment.IOService, p_name string) error{
+	update_index_for_remain_ebr:=func (old_index int32,new_index int32){
+		for i := 0; i < len(self.mounted_partitions); i++ {
+			mntd:=&self.mounted_partitions[i]
+			if mntd.index == old_index{
+				mntd.index = new_index
+			}
+		}
+		panic("Unexpected behavior")
+
+	}
+	unmount_partition:=func (index int32){
+		for i := 0; i < len(self.mounted_partitions); i++ {
+			mntd:=&self.mounted_partitions[i]
+			if mntd.index == index{
+				if self.active_partition == mntd{
+					self.active_partition = nil
+				}
+				self.mounted_partitions = append(self.mounted_partitions[:i],self.mounted_partitions[i+1:]... )
+				return
+			}
+		}
+		panic("Unexpected behavior")
+	}
+	mbr := types.CreateMasterBootRecord(io_service,0)
+	partition_name := utiles.Into_ArrayChar16(p_name)
+	partition_found,partition_trgt := self.Find_p_or_e_partition_by_name(mbr,partition_name)
+	if !partition_found {
+		// fmt.Println("------------------------------modifyng logical partition-------------------------")
+		found_err,extended_partition:= self.Get_extended_partition(mbr)
+		if found_err != nil{return found_err}
+		begin := extended_partition.Part_start().Get()
+		parent_ebr := types.CreateExtendedBootRecord(extended_partition.Super_service,begin)
+		next_ebr_index := parent_ebr.Part_next().Get()
+
+		if parent_ebr.Part_start().Get() != -1 && parent_ebr.Part_name().Get() == partition_name{
+			if parent_ebr.Part_mount().Get() == "Y"{
+				parent_ebr.Part_mount().Set("N")
+				unmount_partition(parent_ebr.Index)
+			}
+			if next_ebr_index != -1{
+				child_ebr := types.CreateExtendedBootRecord(parent_ebr.Super_service,next_ebr_index)
+				parent_ebr.Set(child_ebr.Get())
+				child_ebr.Part_s().Set(-1)
+				child_ebr.Part_start().Set(-1)
+				if child_ebr.Part_mount().Get() == "Y"{
+					child_ebr.Part_mount().Set("N")
+					update_index_for_remain_ebr(child_ebr.Index,parent_ebr.Index)
+				}
+			}else{
+				parent_ebr.Part_s().Set(-1)
+				parent_ebr.Part_start().Set(-1)
+			}
+			return nil
+		}
+		
+		for next_ebr_index != -1{
+			child_ebr := types.CreateExtendedBootRecord(parent_ebr.Super_service,next_ebr_index)
+			next_ebr_index = child_ebr.Part_next().Get()
+			if child_ebr.Part_start().Get() != -1 && child_ebr.Part_name().Get() == partition_name{
+				child_ebr.Part_start().Set(-1)
+				child_ebr.Part_s().Set(-1)
+				child_ebr.Part_next().Set(-1)
+
+				if child_ebr.Part_mount().Get() == "Y"{
+					child_ebr.Part_mount().Set("N")
+					unmount_partition(child_ebr.Index)
+				}
+				
+				parent_ebr.Part_next().Set(next_ebr_index)
+				return nil
+			}
+			parent_ebr = child_ebr
+		}
+		return fmt.Errorf("no primary/extended partition nor logical partition found for removal")
+	}
+	
+	partition_trgt.Part_s().Set(-1)
+	partition_trgt.Part_start().Set(-1)
+	if partition_trgt.Part_status().Get() == "Y"{
+		partition_trgt.Part_status().Set("N")
+		unmount_partition(partition_trgt.Index)
+	}
+	return nil
+}
 func (self *Aplication) Partition_disk(size int32, io_service *datamanagment.IOService, 
 	p_name string, unite utiles.SizeUnit, partition_type utiles.PartitionType,
 	fit utiles.FitCriteria) (int32,error){
@@ -314,7 +399,7 @@ func (self *Aplication) create_EP_partitions(mbr types.MasterBootRecord,p_type u
 	
 
 	if !partition_found {
-		return -1,fmt.Errorf("There are no partition spaces available")
+		return -1,fmt.Errorf("There are no partition spaces available: the 4 partition spaces are already in use")
 	}
 	
 	space_manager,err := datamanagment.SpaceManager_from_occuped_spaces(partitins_spaces,mbr.Mbr_tamano().Get()-mbr.Size)
