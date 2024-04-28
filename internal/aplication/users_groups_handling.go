@@ -10,7 +10,7 @@ import (
 
 func (self *Aplication) Log_in_user(part_id string, user string, password string)(*formats.JournalingManager,error){
 	for i := 0; i < len(self.mounted_partitions); i++ {
-		if (self.mounted_partitions[i]).id != part_id{continue}
+		if (self.mounted_partitions[i]).Id != part_id{continue}
 		mounted := &self.mounted_partitions[i]
 		io_service:=mounted.io
 		var super_block_start int32

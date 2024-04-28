@@ -1,0 +1,9 @@
+/execute    |post| {"code":"all code"} -> {"log":"logging"}
+/disks	    |get|  -> {"disks":["A","B"]}
+/partitions |get|  [query]disk -> {"partitions":[{"name":"A","id":"sdf"}]}
+/login      |post| [query]user,pass,partid
+/logout     |post| 
+/childrens  |get| [query]filepath -> {"chidlrens":[{"name":"a.txt","type":"file"}]}
+/show-file  |get| [query]filepath -> application/plaintext
+/reports    |get| -> {"reports":["/name.jpg","/B.pdf","/this.txt"]}
+/get-report |get| -> [query]report -> application/pdf application/plaintext application/jpg

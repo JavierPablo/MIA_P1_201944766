@@ -8,16 +8,14 @@ import (
 	"project/internal/utiles"
 	"strconv"
 	"strings"
-
-	"github.com/fatih/color"
 )
 
 // type LoadedService struct{
 // 	letter string
 // }
-var Ok = color.New(color.FgGreen)
-var Result = color.New(color.FgCyan)
-var Err = color.New(color.FgRed)
+// var Ok = &o
+// var Result = color.New(color.FgCyan)
+// var Err = color.New(color.FgRed)
 
 type Aplication struct{
 	// loaded_services []LoadedService
@@ -26,10 +24,33 @@ type Aplication struct{
 	active_partition *MountedPartition
 	mounted_partitions []MountedPartition
 }
-func (self *Aplication) Print_mounted(){
+func (self *Aplication) Print_mounted()string{
+	str:=""
 	for i, mounted := range self.mounted_partitions {
-		Result.Printf("%d | %s -> %s = %s\n",i,mounted.id,mounted.name, string(mounted.part_type))
+		str+= fmt.Sprintf("%d | %s -> %s = %s\n",i,mounted.Id,mounted.Name, string(mounted.part_type))
 	}
+	return str
+}
+func (self *Aplication) Mounted_partitions_for(disk string, pool *datamanagment.IOServicePool)[]*MountedPartition{
+	str_list := make([]*MountedPartition,0,10)
+	var io *datamanagment.IOService = nil 
+	for i := 0; i < len(pool.Pool); i++ {
+		if pool.Pool[i].Letter == disk{
+			io = &pool.Pool[i].Io_service
+			break
+		}
+	}
+	for i := 0; i < len(self.mounted_partitions); i++ {
+		if self.mounted_partitions[i].io == io{
+			str_list = append(str_list, &self.mounted_partitions[i])
+		}
+	}
+	// for _, mounted := range self.mounted_partitions {
+	// 	if mounted.io == io{
+	// 		str_list = append(str_list, mounted)
+	// 	}
+	// }
+	return str_list
 }
 // func (self *Aplication) Put_service(letter string,io datamanagment.IOService){
 // 	for i := 0; i < len(self.loaded_services); i++ {
@@ -52,9 +73,9 @@ func (self *Aplication) Print_mounted(){
 // }
 
 type MountedPartition struct{
-	name string
+	Name string
 	io *datamanagment.IOService
-	id string
+	Id string
 	part_type utiles.PartitionType
 	index int32
 	has_session bool

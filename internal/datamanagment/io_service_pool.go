@@ -4,38 +4,38 @@ import "fmt"
 
 
 type Disk struct{
-	letter string
-	io_service IOService
+	Letter string
+	Io_service IOService
 }
 type IOServicePool struct{
 	main_path string
-	pool []Disk
+	Pool []Disk
 }
 func New_IOServicePool(path string)IOServicePool{
 	pool := make([]Disk,0,3)
 	return IOServicePool{
 		main_path: path,
-		pool:      pool,
+		Pool:      pool,
 	}
 }
 func (self *IOServicePool) Get_service_with(letter string )(*IOService,error){
-	for i := 0; i < len(self.pool); i++ {
-		if self.pool[i].letter == letter{
-			return &self.pool[i].io_service,nil
+	for i := 0; i < len(self.Pool); i++ {
+		if self.Pool[i].Letter == letter{
+			return &self.Pool[i].Io_service,nil
 		}
 	}
 	ioservice,err:=IOService_from(self.main_path+"/"+letter+".dsk")
 	if err != nil{return nil,fmt.Errorf("can not open disk with %s letter because it doesnt exist",letter)}
-	self.pool = append(self.pool, Disk{
-		letter:     letter,
-		io_service: ioservice,
+	self.Pool = append(self.Pool, Disk{
+		Letter:     letter,
+		Io_service: ioservice,
 	})
-	return &self.pool[len(self.pool)-1].io_service,nil
+	return &self.Pool[len(self.Pool)-1].Io_service,nil
 }
 func (self *IOServicePool) Flush_changes()(){
-	for i := 0; i < len(self.pool); i++ {
-		if self.pool[i].io_service.has_changes{
-			self.pool[i].io_service.Flush()
+	for i := 0; i < len(self.Pool); i++ {
+		if self.Pool[i].Io_service.has_changes{
+			self.Pool[i].Io_service.Flush()
 		}
 	}
 }

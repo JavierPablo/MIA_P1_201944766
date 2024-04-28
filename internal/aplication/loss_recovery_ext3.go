@@ -11,7 +11,7 @@ import (
 func (self *Aplication) Recovery_ext3(id string) ([]*parser.Task,error){
 	for i := 0; i < len(self.mounted_partitions); i++ {
 		// fmt.Printf("%s == %s",(self.mounted_partitions[i]).id,id)
-		if (self.mounted_partitions[i]).id == id{
+		if (self.mounted_partitions[i]).Id == id{
 			mounted := &self.mounted_partitions[i]
 			io_service := mounted.io
 			var super_block_index int32
@@ -161,7 +161,7 @@ func (self *Aplication) Recovery_ext3(id string) ([]*parser.Task,error){
 func (self *Aplication) Loss_ext3(id string) error{
 	for i := 0; i < len(self.mounted_partitions); i++ {
 		// fmt.Printf("%s == %s",(self.mounted_partitions[i]).id,id)
-		if (self.mounted_partitions[i]).id == id{
+		if (self.mounted_partitions[i]).Id == id{
 			mounted := &self.mounted_partitions[i]
 			io_service := mounted.io
 			var super_block_index int32

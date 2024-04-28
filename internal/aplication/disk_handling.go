@@ -466,8 +466,8 @@ func (self *Aplication) Mount_partition(io_service *datamanagment.IOService, p_n
 		name:= strings.Join(temp[:],"")
 		
 		self.mounted_partitions = append(self.mounted_partitions, MountedPartition{
-			name:	name,
-			id:        id,
+			Name:	name,
+			Id:        id,
 			io:          io_service,
 			part_type: utiles.Logic,
 			index:     ebr.Index,
@@ -492,9 +492,9 @@ func (self *Aplication) Mount_partition(io_service *datamanagment.IOService, p_n
 	name:= strings.Join(temp[:],"")
 	
 	self.mounted_partitions = append(self.mounted_partitions, MountedPartition{
-		name:	name,
+		Name:	name,
 		io:          io_service,
-		id:          id,
+		Id:          id,
 		part_type:   utiles.Primary,
 		index:       partition.Index,
 		has_session: false,
@@ -514,7 +514,7 @@ func (self *Aplication) Mount_partition(io_service *datamanagment.IOService, p_n
 func (self *Aplication) Unmount_partition(id string) error{
 	// io_service := self.Get_service(id)
 	for i := 0; i < len(self.mounted_partitions); i++ {
-		if (self.mounted_partitions[i]).id != id{continue}
+		if (self.mounted_partitions[i]).Id != id{continue}
 		mounted := self.mounted_partitions[i]
 		io_service := mounted.io
 
@@ -555,7 +555,7 @@ func (self *Aplication) Unmount_partition(id string) error{
 func (self *Aplication) Format_mounted_partition(id string, p_type bool, format utiles.Format) error{
 	for i := 0; i < len(self.mounted_partitions); i++ {
 		// fmt.Printf("%s == %s",(self.mounted_partitions[i]).id,id)
-		if (self.mounted_partitions[i]).id == id{
+		if (self.mounted_partitions[i]).Id == id{
 			mounted := &self.mounted_partitions[i]
 			io_service := mounted.io
 			switch mounted.part_type {

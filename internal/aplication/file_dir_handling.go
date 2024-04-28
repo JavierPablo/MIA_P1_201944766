@@ -284,43 +284,45 @@ func (self *Aplication) Move(folders_trgt [][12]string, for_name [12]string, fol
 type StrFile struct{
 	name string
 	childs []*StrFile
+	logger string
 }
-func (self *StrFile) print_as_root(){
-	Result.Println(self.name)
+func (self *StrFile) print_as_root()string{
+	self.logger += self.name + "\n"
 	if len(self.childs) == 0{
-		return
+		return ""
 	}
 	for i := 0; i < len(self.childs)-1; i++ {
 		self.childs[i].print_as_branch("|  ")
 	}
 	self.childs[len(self.childs)-1].print_as_branch("   ")
+	return self.logger
 };
 func (self *StrFile) print_as_branch(history string){
-	Result.Print("|__")
-	Result.Println(self.name)
+	self.logger += "|__"
+	self.logger += self.name + "\n"
 	if len(self.childs) == 0{
 		return
 	}
 	for i := 0; i < len(self.childs)-1; i++ {
-		Result.Print(history)
+		self.logger += history
 		self.childs[i].print_as_branch(history+"|  ")
 	}
-	Result.Print(history)
+	self.logger += history
 	self.childs[len(self.childs)-1].print_as_branch(history+"   ")
 };
-func (self *Aplication) Find(folders_trgt [][12]string, name_criteria utiles.NameCriteria) error {
-	if self.active_partition == nil {return fmt.Errorf("there's no active partition")}
+func (self *Aplication) Find(folders_trgt [][12]string, name_criteria utiles.NameCriteria) (string,error) {
+	if self.active_partition == nil {return "",fmt.Errorf("there's no active partition")}
 	super_service := self.active_partition.io
 	current_time := utiles.Current_Time()
 	super_block_index,fit,err := self.Recover_EXT2_Format(super_service)
-	if err!=nil{return err}
+	if err!=nil{return "",err}
 	format := formats.Recover_Format(super_service, super_block_index, fit)
 	format.Init_bitmap_mapping()
 	var dir = format.First_Inode()
 	user_corr:= int32(self.active_partition.session.active_user.correlative_number)
 	user_g_corr :=  int32(self.active_partition.session.Get_user_group(self.active_partition.session.active_user).correlative_number)
 	err0,srcs_dir := format.Get_nested_dir(dir,folders_trgt,false,user_corr,user_g_corr,current_time,true,false)
-	if err0 != nil{return err0}
+	if err0 != nil{return "",err0}
 
 	to_plain_name := func (str [12]string)string{
 		final:=""
@@ -362,10 +364,10 @@ func (self *Aplication) Find(folders_trgt [][12]string, name_criteria utiles.Nam
 		if result == nil{continue}
 		childs = append(childs, result)
 	}
-	if len(childs) == 0{return nil}
+	if len(childs) == 0{return "",nil}
 	tree := StrFile{name: ".",childs: childs}
-	tree.print_as_root()
-	return nil
+	
+	return tree.print_as_root(),nil
 }
 
 

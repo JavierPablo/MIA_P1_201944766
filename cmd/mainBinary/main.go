@@ -11,25 +11,58 @@ import (
 	"project/internal/datamanagment"
 	"project/internal/formats"
 	"project/internal/parser"
+	"project/internal/types"
 	"project/internal/utiles"
 	"strconv"
 	"strings"
 
 	"github.com/alecthomas/participle/v2"
 	"github.com/fatih/color"
+
+	"encoding/json"
+	"io"
+	"net/http"
 )
-var Ok = color.New(color.FgGreen)
-var Result = color.New(color.FgCyan)
-var Err = color.New(color.FgRed)
-var Line = color.New(color.FgBlack)
-var Print = color.New(color.FgYellow)
+type CustomLogger struct{
+	logs string
+}
+func New_customLogger()CustomLogger{return CustomLogger{logs: ""}}
+func (self *CustomLogger ) Println(a ...string){
+	if len(a) == 0 {self.logs += "\n"}
+
+	for i := 0; i < len(a); i++ {
+		self.logs += a[i] + "\n"
+	}
+}
+func (self *CustomLogger ) Printf(format string,a ...any){
+	self.logs += fmt.Sprintf(format,a...)
+}
+func (self *CustomLogger ) Get_and_clean()string{
+	to_rtrn:=self.logs
+	self.logs = ""
+	return to_rtrn
+}
+func (self *CustomLogger ) Print(a string){
+	self.logs += a 
+}
+// var Ok = color.New(color.FgGreen)
+// var Result = color.New(color.FgCyan)
+// var Err = color.New(color.FgRed)
+// var Line = color.New(color.FgBlack)
+// var Print = color.New(color.FgYellow)
+var Ok = New_customLogger()
+var Result = &Ok
+var Err =  &Ok
+var Line = &Ok
+var Print = &Ok
 func main(){
 	
-	
-	main_program()
+	Server_program()
+	// main_program()
 	// fmt.Println(string(utiles.File))
 	// parser.Some_test()
 }
+
 
 func main_program(){
 	Ok.Println("Bienvenido al systema")
@@ -41,7 +74,7 @@ func main_program(){
 	for{
 		input,err := reader.ReadString('\n')
 		if err != nil {
-			Err.Println("Error reading input:", err)
+			Err.Println("Error reading input:", err.Error())
 			return
 		}
 		execute(input,nil,&app,&ioservice_pool,DISK_CONTAINER_PATH,parser,true)
@@ -500,7 +533,12 @@ func execute(input string,or_tasks *[]*parser.Task,app *aplication.Aplication, i
 			criteria:=utiles.NameCriteria{
 				Chars: criteria_chars,
 			}
-			app.Find(folders,criteria)
+			str,anerr:=app.Find(folders,criteria)
+			if anerr != nil{
+				Err.Printf("Command \"%s\" failed in execution:\n%s\n",task.Command,err)
+				continue
+			}
+			Result.Println(str)
 
 		case "chown":
 			params,err:=task.Get_ChownParam()
@@ -608,7 +646,8 @@ func execute(input string,or_tasks *[]*parser.Task,app *aplication.Aplication, i
 			instructions := string(b)
 			execute(instructions,nil,app,ioservice_pool,disk_path,parser_engine,true)
 		case "mountid":
-			app.Print_mounted()
+			srt:=app.Print_mounted()
+			Result.Println(srt)
 		case "rep":
 			params,err:=task.Get_RepParam()
 			if err!=nil{
@@ -805,3 +844,288 @@ func render_reports(dest_path string,content string)error{
 	}    
     return nil
 }
+
+
+
+var LogProto = color.New(color.FgGreen)
+
+func Server_program() {
+	const ADDRESS string = "localhost:1234"
+	app:=aplication.Aplication{}
+	parser:=parser.Get_parser()
+	const DISK_CONTAINER_PATH string = "./MIA/P1"
+	const REPORT_CONTAINER_PATH string = "./MIA/archivos"
+	ioservice_pool := datamanagment.New_IOServicePool(DISK_CONTAINER_PATH)
+
+	
+	execute_handler:=func(w http.ResponseWriter, r *http.Request) {
+		type ExecuteRequest struct{
+			Code string
+		}
+		type ExecuteResponse struct{
+			Log string
+		}
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		data,err:=io.ReadAll(r.Body)
+		if err!=nil{
+			fmt.Println(err)
+			fmt.Println("here--------------")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		
+		var execute_request ExecuteRequest
+		err = json.Unmarshal(data, &execute_request)
+		if err!=nil{
+			
+			fmt.Println(string(data))
+			fmt.Println("here 2--------------")
+			fmt.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		execute(execute_request.Code,nil,&app,&ioservice_pool,DISK_CONTAINER_PATH,parser,true)
+
+		js,err:=json.Marshal(ExecuteResponse{
+			Log: Ok.Get_and_clean(),
+		})
+		if err!=nil{
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, string(js))
+	}
+	disks_handler:=func(w http.ResponseWriter, r *http.Request) {
+		type DisksResponse struct{
+			Disks []string
+		}
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+
+		// Read directory
+		files, err := os.ReadDir(DISK_CONTAINER_PATH)
+		if err != nil {
+			fmt.Println("Error reading directory:", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		disks:=make([]string,0,10)
+		for _, file := range files {
+			disks = append(disks, file.Name())
+		}
+
+		js,err:=json.Marshal(DisksResponse{
+			Disks: disks,
+		})
+		if err!=nil{
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, string(js))
+	}
+	partition_handler:=func(w http.ResponseWriter, r *http.Request) {
+		type PartitionInfo struct{	
+			Name string
+			Id string
+		}	
+		type PartitionsResponse struct{
+			Partitions []PartitionInfo
+		}
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		trgt_disk:=strings.Split(r.URL.Query().Get("disk"), ".")[0]
+		list:= app.Mounted_partitions_for(trgt_disk,&ioservice_pool)
+		js_list:=make([]PartitionInfo,0,10)
+		for _,mntd:=range list{
+			js_list = append(js_list, PartitionInfo{
+				Name: mntd.Name,
+				Id:   mntd.Id,
+			})
+		}
+		js,err:=json.Marshal(PartitionsResponse{
+			Partitions: js_list,
+		})
+		if err!=nil{
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, string(js))
+	}
+	login_handler:=func(w http.ResponseWriter, r *http.Request) {
+
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		lgn_user:=r.URL.Query().Get("user")
+		lgn_pass:=r.URL.Query().Get("pass")
+		lgn_idpart:=r.URL.Query().Get("partid")
+		journal,err := app.Log_in_user(lgn_idpart,lgn_user,lgn_pass)
+		if err!=nil{
+			// fmt.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		if journal!=nil{
+			journal.Push_instruction(formats.New_inst(formats.Login,[]string{lgn_user,lgn_pass}))
+		}
+		w.WriteHeader(http.StatusOK)
+	}
+	logout_handler:=func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		
+		journal,err :=app.Log_out()
+		if err!=nil{
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		if journal!=nil{
+			journal.Push_instruction(formats.New_inst(formats.Unlog,[]string{}))
+		}
+		w.WriteHeader(http.StatusOK)
+	}
+	childrens_handler:=func(w http.ResponseWriter, r *http.Request) {
+		type ChildrenInfo struct{
+			Name string
+			Type string
+		}
+		type ChildrensResponse struct{
+			Childrens []ChildrenInfo
+		}
+		
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		filepath:=r.URL.Query().Get("filepath")
+		// 
+		var folders [][12]string
+		if filepath == "/"{
+			folders= make([][12]string,0,0)
+		}else{
+			dirs := strings.Split(filepath, "/")[1:]
+			folders= make([][12]string,0,len(dirs))
+			for i := 0; i < len(dirs); i++ {
+				folders = append(folders, utiles.Into_ArrayChar12(dirs[i]))
+			}
+		}
+		childs,err:=app.All_shallow_childs_for(folders)
+		if err!=nil{
+			fmt.Println("dfffffffffff")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		js_childs:=make([]ChildrenInfo,0,10)
+		for _,content := range childs{
+			inode:=types.CreateIndexNode(content.Super_service,content.B_inodo().Get())
+			child_type:=inode.I_type().Get()
+			name_arr:=content.B_name().Get()
+			
+			js_childs = append(js_childs, ChildrenInfo{
+				Name: strings.TrimSpace(strings.Join(name_arr[:],"")),
+				Type: child_type,
+			})
+		}
+		js,err:=json.Marshal(ChildrensResponse{
+			Childrens: js_childs,
+		})
+		if err!=nil{
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		// 
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, string(js))
+	}
+	showfile_handler:=func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		filepath:=r.URL.Query().Get("filepath")
+		// 
+		dirs:=strings.Split(filepath, "/")[1:]
+		file_name:=utiles.Into_ArrayChar12(dirs[len(dirs) - 1])
+		dirs = dirs[:len(dirs) - 1]
+		folders:= make([][12]string,0,len(dirs))
+		for i := 0; i < len(dirs); i++ {
+			folders = append(folders, utiles.Into_ArrayChar12(dirs[i]))
+		}
+		content,err := app.Show_file(folders,file_name)
+		if err!=nil{
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(content))
+	}
+	reports_handler:=func(w http.ResponseWriter, r *http.Request) {
+		type ReportsResponse struct{
+			Reports []string
+		}
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		reports := make([]string,0,10)
+		// Read directory
+		err := filepath.Walk(REPORT_CONTAINER_PATH, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if !info.IsDir() {
+				reports = append(reports, path)
+			}
+			return nil
+		})
+		if err != nil {
+			fmt.Println("Error reading directory:", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		js,err:=json.Marshal(ReportsResponse{
+			Reports: reports,
+		})
+		if err!=nil{
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, string(js))
+
+	}
+	getreport_handler:=func(w http.ResponseWriter, r *http.Request) {
+		report_path:=r.URL.Query().Get("report")
+		w.Header().Set("Access-Control-Allow-Origin", "*")		
+		file_content, err := os.ReadFile(report_path)
+
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		file_ext:=strings.Split(report_path, ".")[1]
+		switch strings.ToLower(file_ext) {
+		case "txt":
+			w.Header().Set("Content-Type", "text/plain")
+		case "jpg" , "jpeg":
+			w.Header().Set("Content-Type", "image/jpeg")
+		case "pdf":
+			w.Header().Set("Content-Type", "application/pdf")
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write(file_content)
+		// fmt.Fprint(w, file_content)
+	}
+	http.HandleFunc("/execute", execute_handler)
+	http.HandleFunc("/disks", disks_handler)
+	http.HandleFunc("/partitions", partition_handler)
+	http.HandleFunc("/login", login_handler)
+	http.HandleFunc("/logout", logout_handler)
+	http.HandleFunc("/childrens", childrens_handler)
+	http.HandleFunc("/show-file", showfile_handler)
+	http.HandleFunc("/reports", reports_handler)
+	http.HandleFunc("/get-report", getreport_handler)
+	fmt.Printf("server listening at %s\n",ADDRESS)
+	http.ListenAndServe(ADDRESS, nil)
+}
+
+
+
+
+
+
+
+

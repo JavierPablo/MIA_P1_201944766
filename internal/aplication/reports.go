@@ -202,7 +202,7 @@ func (self *Aplication) Disk_repos(ioservice *datamanagment.IOService)(string,er
 
 func (self *Aplication) Inode_repos(part_id string)(string,error){
 	for i := 0; i < len(self.mounted_partitions); i++ {
-		if (self.mounted_partitions[i]).id != part_id{continue}
+		if (self.mounted_partitions[i]).Id != part_id{continue}
 		mounted := &self.mounted_partitions[i]
 		io_service:=mounted.io
 		var super_block_start int32
@@ -367,7 +367,7 @@ func recursive_block_repo_in_pointer(pointer_block *types.PointerBlock, level in
 
 func (self *Aplication) Block_repos(part_id string)(string,error){
 	for i := 0; i < len(self.mounted_partitions); i++ {
-		if (self.mounted_partitions[i]).id != part_id{continue}
+		if (self.mounted_partitions[i]).Id != part_id{continue}
 		mounted := &self.mounted_partitions[i]
 		io_service:=mounted.io
 		var super_block_start int32
@@ -405,7 +405,7 @@ func (self *Aplication) Block_repos(part_id string)(string,error){
 
 func (self *Aplication) Inode_bitmap_repos(part_id string)(string,error){
 	for i := 0; i < len(self.mounted_partitions); i++ {
-		if (self.mounted_partitions[i]).id != part_id{continue}
+		if (self.mounted_partitions[i]).Id != part_id{continue}
 		mounted := &self.mounted_partitions[i]
 		io_service:=mounted.io
 		var super_block_start int32
@@ -455,7 +455,7 @@ func (self *Aplication) Inode_bitmap_repos(part_id string)(string,error){
 }
 func (self *Aplication) Block_bitmap_repos(part_id string)(string,error){
 	for i := 0; i < len(self.mounted_partitions); i++ {
-		if (self.mounted_partitions[i]).id != part_id{continue}
+		if (self.mounted_partitions[i]).Id != part_id{continue}
 		mounted := &self.mounted_partitions[i]
 		io_service:=mounted.io
 		var super_block_start int32
@@ -673,7 +673,7 @@ func(self *TreeRepoBuilder) New_FileBlock_node(file_block types.FileBlock)(strin
 
 func (self *Aplication) Tree_repos(part_id string)(string,error){
 	for i := 0; i < len(self.mounted_partitions); i++ {
-		if (self.mounted_partitions[i]).id != part_id{continue}
+		if (self.mounted_partitions[i]).Id != part_id{continue}
 		mounted := &self.mounted_partitions[i]
 		io_service:=mounted.io
 		var super_block_start int32
@@ -861,7 +861,7 @@ func recursive_tree_repo_in_pointer(pointer_block *types.PointerBlock, level int
 
 func (self *Aplication)Journaling(part_id string)(string,error){
 	for i := 0; i < len(self.mounted_partitions); i++ {
-		if (self.mounted_partitions[i]).id != part_id{continue}
+		if (self.mounted_partitions[i]).Id != part_id{continue}
 		mounted := &self.mounted_partitions[i]
 		io_service:=mounted.io
 		var super_block_start int32
@@ -906,7 +906,7 @@ func (self *Aplication)Journaling(part_id string)(string,error){
 
 func (self *Aplication) Super_block_repo(part_id string)(string,error){
 	for i := 0; i < len(self.mounted_partitions); i++ {
-		if (self.mounted_partitions[i]).id != part_id{continue}
+		if (self.mounted_partitions[i]).Id != part_id{continue}
 		mounted := &self.mounted_partitions[i]
 		io_service:=mounted.io
 		var super_block_start int32
@@ -932,7 +932,7 @@ func (self *Aplication) Super_block_repo(part_id string)(string,error){
 func (self *Aplication) Ls_report(part_id string,folders_trgt [][12]string) (string,error) {
 	current_time := utiles.Current_Time()
 	for i := 0; i < len(self.mounted_partitions); i++ {
-		if (self.mounted_partitions[i]).id != part_id{continue}
+		if (self.mounted_partitions[i]).Id != part_id{continue}
 		mounted := &self.mounted_partitions[i]
 		io_service:=mounted.io
 		var super_block_start int32

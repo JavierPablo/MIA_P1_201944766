@@ -219,6 +219,8 @@ rep -id=A166 -path="./MIA/archivos/reportes/reporte6_bm_block.txt" -name="bm_blo
 rep -id=A166 -path="./MIA/archivos/reportes/reporte6_bm_inode.txt" -name="bm_inode"
 rep -id=A166 -path="./MIA/archivos/reportes/reporte6_sb.jpg" -name=sb
 rep -id=A166 -path="./MIA/archivos/reportes/reporte6_journaling.jpg" -name=journaling #ERR EXT2 NO TIENE JOURNAL
+rep -id=A166 -path="./MIA/archivos/reportes/reporte6_ls1.jpg" -ruta="/home/archivos/archivos 19" -name=ls
+rep -id=A166 -path="./MIA/archivos/reportes/reporte6_ls2.jpg" -ruta="/home/archivos/user/docs" -name=ls
 
 pause
 mkdisk -param=x #ERR
